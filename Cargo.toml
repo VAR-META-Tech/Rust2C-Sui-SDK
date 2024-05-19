@@ -1,0 +1,13 @@
+[package]
+name = "sui_rust_sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sui-sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk"}
+tokio = { version = "1.2", features = ["full"] }
+anyhow = "1.0"
+
+[lib]
+name = "sui_rust_sdk"
+crate-type = ["staticlib", "cdylib"]
