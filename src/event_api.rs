@@ -1,9 +1,18 @@
+// Copyright (c) Mysten Labs, Inc.
+// SPDX-License-Identifier: Apache-2.0
 use anyhow::Result;
 use futures::stream::StreamExt;
 use sui_sdk::rpc_types::EventFilter;
 use sui_sdk::SuiClientBuilder;
 
-pub async fn event_api() -> Result<()> {
+
+// This example showcases how to use the Event API.
+// At the end of the program it subscribes to the events
+// on the Sui testnet and prints every incoming event to
+// the console. The program will loop until it is force
+// stopped.
+
+pub async fn _event_api() -> Result<(), anyhow::Error> {
     let (sui, active_address, _second_address) = super::utils::setup_for_write().await?;
 
     println!(" *** Get events *** ");

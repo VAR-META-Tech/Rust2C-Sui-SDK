@@ -48,4 +48,4 @@ serde_yaml = "0.8.26"
 [lib]
 name = "sui_rust_sdk"
 crate-type = ["staticlib", "cdylib"]
-
+path = "src/sui_rust_wrapper_c.rs"

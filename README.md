@@ -10,29 +10,57 @@ Follow this guide to install Sui https://docs.sui.io/guides/developer/getting-st
 
 # Request tokens to pay for the free
 
-Run follow command
-1. Switch to devnet network: sui client switch --env devnet
-2. Check current network: sui client active-env (the return should be devnet)
-3. Get the active address: sui client active-address
-4. Request token: sui client faucet (wait for 60s to get the tokens)
-5. Check the gas coin objects for the active address: sui client gas
+Run follow command to setting Envỉroment befor testing:
+1. Check Sui Client Environment:  
+   
+    ```sh 
+    Sui client envs
+    ```
+ **NOTE:If you dont have DevNet Please Run CMD :**
 
-# Optional
+    sui client new-env --alias devnet --rpc https://fullnode.devnet.sui.io:443
+    
 
-Run your local network :
-https://docs.sui.io/guides/developer/getting-started/local-network
+2. Switch to devnet network: 
+   
+    ```sh 
+    sui client switch --env devnet
+    ```
 
-# Set up done.
 
-Run test code with sh:
+3. Check current network:
+   
+    ```sh 
+    sui client active-env
+    ```
+ **NOTE: The return should be devnet**
+ 
+4. Get the active address: 
+
+    ```sh
+    sui client active-address
+    ```
+
+5. Request token:
+
+    ```sh
+    sui client faucet 
+    ```
+
+ **NOTE: Wait for 60s to get the tokens**
+
+6. Check the gas coin objects for the active address: 
+   
+    ```sh
+    sui client gas
+    ```
+
+# Set up done. Run test code with sh:
+
+Run the following command to test:
+ ```sh
 sh test.sh
-
-Or:
-
-cargo build --release
-gcc test.c -L target/release/ -lsui_rust_sdk -o test
-./test
-
+ ```
 
 
 

@@ -1,7 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
-
+use anyhow::Result;
+//mod utils;
 use futures::{future, stream::StreamExt};
+//use utils::setup_for_read;
 
 // This example uses the coin read api to showcase the available
 // functions to retrieve coin related information for a specific address.
@@ -11,7 +13,8 @@ use futures::{future, stream::StreamExt};
 // and add 1 SUI to the active address.
 // By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
 
-pub async fn coin_read_api() -> Result<(), anyhow::Error> {
+
+pub async fn _coin_read_api() -> Result<()> {
     let (sui, active_address) = super::utils::setup_for_read().await?;
 
     // ************ COIN READ API ************ //
