@@ -1,12 +1,14 @@
 #include <stdio.h>
 
-extern int perform_async_sample_task_sync(void);
-extern int perform_coin_read_api_sync(void);
+extern int connect_sui(void);
+extern int coin_read_api(void);
+extern int event_api(void);
+extern int sui_clients(void);
 
 int main()
 {
 
-    int result2 = perform_coin_read_api_sync();
+    int result2 = sui_clients();
     if (result2 == 0)
     {
         printf("Task succeeded.\n");
