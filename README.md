@@ -17,15 +17,21 @@ Run follow command
 4. Request token: sui client faucet (wait for 60s to get the tokens)
 5. Check the gas coin objects for the active address: sui client gas
 
-# Optional 
+# Optional
 
 Run your local network :
 https://docs.sui.io/guides/developer/getting-started/local-network
 
-# Set up done. Run test code with sh:
+# Set up done.
 
-Run the following command:
+Run test code with sh:
 sh test.sh
+
+Or:
+
+cargo build --release
+gcc test.c -L target/release/ -lsui_rust_sdk -o test
+./test
 
 
 
