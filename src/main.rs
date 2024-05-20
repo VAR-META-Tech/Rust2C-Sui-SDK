@@ -16,6 +16,6 @@ use futures::{future, stream::StreamExt};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let _ = coin_read_api::coin_read_api().await;
+    let _ = coin_read_api::_coin_read_api().await;
     Ok(())
 }
