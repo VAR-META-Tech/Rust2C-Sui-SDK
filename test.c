@@ -8,7 +8,7 @@ extern int sui_clients(void);
 int main()
 {
 
-    int result2 = sui_clients();
+    int result2 = coin_read_api();
     if (result2 == 0)
     {
         printf("Task succeeded.\n");
