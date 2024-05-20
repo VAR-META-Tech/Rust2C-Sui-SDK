@@ -2,11 +2,11 @@
 
 # Install Rust
 
-Follow this guild to install Rust https://www.rust-lang.org/tools/install
+Follow this guide to install Rust https://www.rust-lang.org/tools/install
 
 # Install Sui
 
-Follow this guild to install Sui https://docs.sui.io/guides/developer/getting-started/sui-install
+Follow this guide to install Sui https://docs.sui.io/guides/developer/getting-started/sui-install
 
 # Request tokens to pay for the free
 
