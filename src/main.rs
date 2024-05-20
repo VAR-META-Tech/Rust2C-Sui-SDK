@@ -4,8 +4,6 @@
 mod coin_read_api;
 mod utils;
 
-use futures::{future, stream::StreamExt};
-
 // This example uses the coin read api to showcase the available
 // functions to retrieve coin related information for a specific address.
 // The example will use the active address in the wallet (if it exists or create one if it doesn't)
@@ -16,6 +14,6 @@ use futures::{future, stream::StreamExt};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let _ = coin_read_api::coin_read_api().await;
+    let _ = coin_read_api::_coin_read_api().await;
     Ok(())
 }
