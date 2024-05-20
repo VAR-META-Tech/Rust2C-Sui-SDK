@@ -5,6 +5,7 @@ mod utils;
 use futures::{future, stream::StreamExt};
 use utils::setup_for_read;
 mod coin_read_api_2;
+
 // This example uses the coin read api to showcase the available
 // functions to retrieve coin related information for a specific address.
 // The example will use the active address in the wallet (if it exists or create one if it doesn't)
