@@ -1,53 +1,20 @@
-use sui_sdk::SuiClientBuilder;
-// Import the necessary crates
-use anyhow::Result;
-use tokio::runtime; // Using Tokio as the async runtime
+// Copyright (c) Mysten Labs, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 mod utils;
 use futures::{future, stream::StreamExt};
 use utils::setup_for_read;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+// This example uses the coin read api to showcase the available
+// functions to retrieve coin related information for a specific address.
+// The example will use the active address in the wallet (if it exists or create one if it doesn't)
+// check if it has coins and request coins from the faucet if there aren't any.
+// If there is no wallet, it will create a wallet and two addresses, set one address as active,
+// and add 1 SUI to the active address.
+// By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
-
-async fn async_sample_task() -> Result<()> {
-    // Simulate some async operations
-    let sui_testnet = SuiClientBuilder::default().build_testnet().await?;
-    println!("Sui testnet version: {}", sui_testnet.api_version());
-
-    // Sui devnet -- https://fullnode.devnet.sui.io:443
-    let sui_devnet = SuiClientBuilder::default().build_devnet().await?;
-    println!("Sui devnet version: {}", sui_devnet.api_version());
-    // Return Ok or Err
-    Ok(())
-}
-
-#[no_mangle]
-pub extern "C" fn perform_async_sample_task_sync() -> i32 {
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        match async_sample_task().await {
-            Ok(_) => 0,  // Return 0 to indicate success.
-            Err(_) => 1, // Return 1 or other error codes to indicate an error.
-        }
-    })
-}
-
-async fn coin_read_api() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     let (sui, active_address) = setup_for_read().await?;
 
     // ************ COIN READ API ************ //
@@ -136,18 +103,4 @@ async fn coin_read_api() -> Result<()> {
 
     // ************ END OF COIN READ API ************ //
     Ok(())
-}
-
-#[no_mangle]
-pub extern "C" fn perform_coin_read_api_sync() -> i32 {
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        match coin_read_api().await {
-            Ok(_) => 0,  // Return 0 to indicate success.
-            Err(_) => 1, // Return 1 or other error codes to indicate an error.
-        }
-    })
 }
