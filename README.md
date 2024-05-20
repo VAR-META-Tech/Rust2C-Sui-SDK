@@ -17,7 +17,7 @@ Run follow command
 4. Request token: sui client faucet (wait for 60s to get the tokens)
 5. Check the gas coin objects for the active address: sui client gas
 
-#Optional 
+# Optional 
 
 Run your local network :
 https://docs.sui.io/guides/developer/getting-started/local-network
