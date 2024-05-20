@@ -1,10 +1,11 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+mod coin_read_api;
 mod utils;
+
 use futures::{future, stream::StreamExt};
-use utils::setup_for_read;
-mod coin_read_api_2;
+
 // This example uses the coin read api to showcase the available
 // functions to retrieve coin related information for a specific address.
 // The example will use the active address in the wallet (if it exists or create one if it doesn't)
@@ -15,6 +16,6 @@ mod coin_read_api_2;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let _ = coin_read_api_2::coin_read_api_2().await;
+    let _ = coin_read_api::coin_read_api().await;
     Ok(())
 }

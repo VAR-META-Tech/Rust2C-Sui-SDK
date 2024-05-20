@@ -49,6 +49,3 @@ serde_yaml = "0.8.26"
 name = "sui_rust_sdk"
 crate-type = ["staticlib", "cdylib"]
 
-[[example]]
-name = "coin_read_api"
-path = "src/coin_read_api.rs"
