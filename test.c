@@ -5,7 +5,7 @@
 int main()
 {
     // Demo Connet testnet
-    int connetTestNet = async_connect_testnet_c();
+    int connetTestNet = connect_testnet_c();
     if (connetTestNet == 0)
     {
         printf("connetTestNet succeeded.\n");
@@ -15,7 +15,7 @@ int main()
         printf("connetTestNet failed.\n");
     }
     // Demo Connet devnet
-    int connetDevNet = async_connect_devnet_c();
+    int connetDevNet = connect_devnet_c();
     if (connetDevNet == 0)
     {
         printf("connetDevNet succeeded.\n");
@@ -24,6 +24,18 @@ int main()
     {
         printf("connetDevNet failed.\n");
     }
+
+    // Demo Connet Local Net
+    int connetLocalNet = connect_localnet_c();
+    if (connetDevNet == 0)
+    {
+        printf("connetLocalNet succeeded.\n");
+    }
+    else
+    {
+        printf("connetLocalNet failed.\n");
+    }
+
     // Demo Coin Read API
     int coin_read_api_result = coin_read_api();
     if (coin_read_api_result == 0)
