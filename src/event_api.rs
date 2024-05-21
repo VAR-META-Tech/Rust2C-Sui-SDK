@@ -5,7 +5,6 @@ use futures::stream::StreamExt;
 use sui_sdk::rpc_types::EventFilter;
 use sui_sdk::SuiClientBuilder;
 
-
 // This example showcases how to use the Event API.
 // At the end of the program it subscribes to the events
 // on the Sui testnet and prints every incoming event to

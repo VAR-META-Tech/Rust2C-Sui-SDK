@@ -49,4 +49,4 @@ once_cell = "1.8.0"
 [lib]
 name = "sui_rust_sdk"
 crate-type = ["staticlib", "cdylib"]
-path = "src/sui_rust_wrapper_c.rs"
+path = "src/sui-sdk-lib.rs"
