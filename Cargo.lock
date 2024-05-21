@@ -5645,6 +5645,7 @@ dependencies = [
  "anyhow",
  "futures",
  "futures-core",
+ "once_cell",
  "reqwest",
  "serde",
  "serde-name",

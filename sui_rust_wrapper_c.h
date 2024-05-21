@@ -12,6 +12,7 @@ int connect_sui(void);
 int coin_read_api(void);
 int event_api(void);
 int sui_clients(void);
+int test(void);
 
 #ifdef __cplusplus
 }

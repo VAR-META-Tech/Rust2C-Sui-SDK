@@ -5,35 +5,35 @@
 int main()
 {
     // Demo Connet testnet
-    int connetTestNet = async_connect_testnet_c();
-    if (connetTestNet == 0)
-    {
-        printf("connetTestNet succeeded.\n");
-    }
-    else
-    {
-        printf("connetTestNet failed.\n");
-    }
-    // Demo Connet devnet
-    int connetDevNet = async_connect_devnet_c();
-    if (connetDevNet == 0)
-    {
-        printf("connetDevNet succeeded.\n");
-    }
-    else
-    {
-        printf("connetDevNet failed.\n");
-    }
-    // Demo Coin Read API
-    int coin_read_api_result = coin_read_api();
-    if (coin_read_api_result == 0)
-    {
-        printf("Demo Coin Read API succeeded.\n");
-    }
-    else
-    {
-        printf("Demo Coin Read API failed.\n");
-    }
+    // int connetTestNet = async_connect_testnet_c();
+    // if (connetTestNet == 0)
+    // {
+    //     printf("connetTestNet succeeded.\n");
+    // }
+    // else
+    // {
+    //     printf("connetTestNet failed.\n");
+    // }
+    // // Demo Connet devnet
+    // int connetDevNet = async_connect_devnet_c();
+    // if (connetDevNet == 0)
+    // {
+    //     printf("connetDevNet succeeded.\n");
+    // }
+    // else
+    // {
+    //     printf("connetDevNet failed.\n");
+    // }
+    // // Demo Coin Read API
+    // int coin_read_api_result = coin_read_api();
+    // if (coin_read_api_result == 0)
+    // {
+    //     printf("Demo Coin Read API succeeded.\n");
+    // }
+    // else
+    // {
+    //     printf("Demo Coin Read API failed.\n");
+    // }
     // Demo Event API
     // int event_api_result = event_api();
     //     if (event_api_result == 0)
@@ -44,5 +44,15 @@ int main()
     //     {
     //         printf("Demo Event API failed.\n");
     //     }
+
+    int test_result = test();
+    if (test_result == 0)
+    {
+        printf("Demo Test succeeded.\n");
+    }
+    else
+    {
+        printf("Demo Test failed.\n");
+    }
     return 0;
 }

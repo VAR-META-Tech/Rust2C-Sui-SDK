@@ -1,19 +1,44 @@
-// Copyright (c) Mysten Labs, Inc.
-// SPDX-License-Identifier: Apache-2.0
+use once_cell::sync::OnceCell;
+use sui_sdk::error::Error;
+use sui_sdk::{SuiClient, SuiClientBuilder};
+use tokio::sync::Mutex;
+struct SuiClientSingleton {
+    client: Mutex<Option<SuiClient>>,
+}
 
-mod coin_read_api;
-mod utils;
+impl SuiClientSingleton {
+    fn instance() -> &'static SuiClientSingleton {
+        static INSTANCE: OnceCell<SuiClientSingleton> = OnceCell::new();
+        INSTANCE.get_or_init(|| SuiClientSingleton {
+            client: Mutex::new(None),
+        })
+    }
 
-// This example uses the coin read api to showcase the available
-// functions to retrieve coin related information for a specific address.
-// The example will use the active address in the wallet (if it exists or create one if it doesn't)
-// check if it has coins and request coins from the faucet if there aren't any.
-// If there is no wallet, it will create a wallet and two addresses, set one address as active,
-// and add 1 SUI to the active address.
-// By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
+    async fn get_or_init(&self) -> Result<SuiClient, Error> {
+        let mut client_guard = self.client.lock().await;
+        if let Some(client) = &*client_guard {
+            Ok(client.clone())
+        } else {
+            let client = SuiClientBuilder::default().build_testnet().await?;
+            *client_guard = Some(client.clone());
+            Ok(client)
+        }
+    }
+}
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
-    let _ = coin_read_api::_coin_read_api().await;
+async fn main() -> Result<(), Error> {
+    let sui_singleton = SuiClientSingleton::instance();
+
+    // Retrieve the singleton instance of SuiClient
+    let sui_client = sui_singleton.get_or_init().await?;
+    println!("SuiClient initialized.");
+
+    // If called again, it will return the cached instance
+    let sui_client_cached = sui_singleton.get_or_init().await?;
+    println!("SuiClient retrieved from cache.");
+
+    println!("Sui testnet version is: {}", sui_client.api_version());
+
     Ok(())
 }
