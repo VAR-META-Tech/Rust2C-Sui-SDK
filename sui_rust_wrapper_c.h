@@ -6,8 +6,8 @@
 extern "C" {
 #endif
 
-int async_connects_testnet_c();
-int async_connects_devnet_c();
+int async_connect_testnet_c();
+int async_connect_devnet_c();
 int connect_sui(void);
 int coin_read_api(void);
 int event_api(void);

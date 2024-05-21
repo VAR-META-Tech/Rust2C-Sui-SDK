@@ -5,7 +5,7 @@
 int main()
 {
     // Demo Connet testnet
-    int connetTestNet = async_connects_testnet_c();
+    int connetTestNet = async_connect_testnet_c();
     if (connetTestNet == 0)
     {
         printf("connetTestNet succeeded.\n");
@@ -15,7 +15,7 @@ int main()
         printf("connetTestNet failed.\n");
     }
     // Demo Connet devnet
-    int connetDevNet = async_connects_devnet_c();
+    int connetDevNet = async_connect_devnet_c();
     if (connetDevNet == 0)
     {
         printf("connetDevNet succeeded.\n");
