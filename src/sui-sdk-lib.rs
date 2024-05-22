@@ -1,6 +1,6 @@
 use std::ffi::{c_char, c_int, CString};
 
-use sui_client::{_api_version, _available_rpc_methods, _check_api_version};
+use sui_client::{_api_version, _available_rpc_methods, _available_subscriptions, _check_api_version};
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
 use anyhow::Result;
@@ -84,6 +84,29 @@ pub struct ResultCStringArray {
     error: *const c_char,
 }
 
+// Function to free the C-compatible string array
+#[no_mangle]
+pub extern "C" fn free_strings(array: CStringArray) {
+    unsafe {
+        for i in 0..array.len {
+            let c_str_ptr = *array.data.add(i as usize);
+            if !c_str_ptr.is_null() {
+                CString::from_raw(c_str_ptr as *mut c_char);
+            }
+        }
+    }
+}
+
+// Function to free the error string
+#[no_mangle]
+pub extern "C" fn free_error_string(error: *const c_char) {
+    if !error.is_null() {
+        unsafe {
+            CString::from_raw(error as *mut c_char);
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn available_rpc_methods() -> ResultCStringArray {
     // Create a new runtime. This step might vary based on the async runtime you are using.
@@ -92,7 +115,47 @@ pub extern "C" fn available_rpc_methods() -> ResultCStringArray {
     rt.block_on(async {
         match _available_rpc_methods().await {
             Ok(strings) => {
-                let mut c_strings: Vec<*const c_char> = strings.into_iter()
+                let mut c_strings: Vec<*const c_char> = strings
+                    .into_iter()
+                    .map(|s| CString::new(s).unwrap().into_raw() as *const c_char)
+                    .collect();
+
+                c_strings.shrink_to_fit();
+                let data = c_strings.as_ptr();
+                let len = c_strings.len() as c_int;
+
+                // Prevent Rust from freeing the CString pointers
+                std::mem::forget(c_strings);
+
+                ResultCStringArray {
+                    strings: CStringArray { data, len },
+                    error: std::ptr::null(),
+                }
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap().into_raw();
+                ResultCStringArray {
+                    strings: CStringArray {
+                        data: std::ptr::null(),
+                        len: 0,
+                    },
+                    error: error_message,
+                }
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn available_subscriptions() -> ResultCStringArray {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _available_subscriptions().await {
+            Ok(strings) => {
+                let mut c_strings: Vec<*const c_char> = strings
+                    .into_iter()
                     .map(|s| CString::new(s).unwrap().into_raw() as *const c_char)
                     .collect();
 

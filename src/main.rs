@@ -41,6 +41,13 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("SuiClient retrieved from cache.");
 
     println!("Sui testnet version is: {}", sui_client.api_version());
-
+    println!(
+        "available_rpc_methods: {:?}",
+        sui_client.available_rpc_methods()
+    );
+    println!(
+        "available_subscriptions: {:?}",
+        sui_client.available_subscriptions()
+    );
     Ok(())
 }

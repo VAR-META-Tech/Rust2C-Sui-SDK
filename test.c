@@ -5,6 +5,27 @@
 int main()
 {
 
+    // Call the Rust function to get the string array
+    ResultCStringArray result = available_subscriptions();
+
+    // Check if there was an error
+    if (result.error != NULL)
+    {
+        printf("Error: %s\n", result.error);
+        free_error_string(result.error);
+    }
+    else
+    {
+        // Print the strings
+        for (int i = 0; i < result.strings.len; i++)
+        {
+            printf("String %d: %s\n", i, result.strings.data[i]);
+        }
+
+        // Free the allocated string array memory
+        free_strings(result.strings);
+    }
+
     const char *version = api_version();
 
     printf("Get api Version : %s\n", version);
