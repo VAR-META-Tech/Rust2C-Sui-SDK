@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use once_cell::sync::OnceCell;
 use sui_sdk::error::Error;
 use sui_sdk::{SuiClient, SuiClientBuilder};
@@ -19,7 +21,7 @@ impl SuiClientSingleton {
         if let Some(client) = &*client_guard {
             Ok(client.clone())
         } else {
-            let client = SuiClientBuilder::default().build_testnet().await?;
+            let client = SuiClientBuilder::default().build_devnet().await?;
             *client_guard = Some(client.clone());
             Ok(client)
         }
@@ -27,7 +29,7 @@ impl SuiClientSingleton {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), anyhow::Error> {
     let sui_singleton = SuiClientSingleton::instance();
 
     // Retrieve the singleton instance of SuiClient

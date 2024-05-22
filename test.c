@@ -4,57 +4,30 @@
 
 int main()
 {
-    // Demo Connet testnet
-    int connetTestNet = connect_testnet_c();
-    if (connetTestNet == 0)
+
+    const char *version = api_version();
+
+    printf("Get api Version : %s\n", version);
+
+    int check_api_version_result = check_api_version();
+    if (check_api_version_result == 0)
     {
-        printf("connetTestNet succeeded.\n");
+        printf("Api version match.\n");
     }
     else
     {
-        printf("connetTestNet failed.\n");
-    }
-    // Demo Connet devnet
-    int connetDevNet = connect_devnet_c();
-    if (connetDevNet == 0)
-    {
-        printf("connetDevNet succeeded.\n");
-    }
-    else
-    {
-        printf("connetDevNet failed.\n");
+        printf("API Version not match.\n");
     }
 
-    // Demo Connet Local Net
-    int connetLocalNet = connect_localnet_c();
-    if (connetDevNet == 0)
+    int test_result = test();
+    if (test_result == 0)
     {
-        printf("connetLocalNet succeeded.\n");
+        printf("Demo test succeeded.\n");
     }
     else
     {
-        printf("connetLocalNet failed.\n");
+        printf("Demo test failed.\n");
     }
 
-    // Demo Coin Read API
-    int coin_read_api_result = coin_read_api();
-    if (coin_read_api_result == 0)
-    {
-        printf("Demo Coin Read API succeeded.\n");
-    }
-    else
-    {
-        printf("Demo Coin Read API failed.\n");
-    }
-    // Demo Event API
-    // int event_api_result = event_api();
-    //     if (event_api_result == 0)
-    //     {
-    //         printf("Demo Event API succeeded.\n");
-    //     }
-    //     else
-    //     {
-    //         printf("Demo Event API failed.\n");
-    //     }
     return 0;
 }

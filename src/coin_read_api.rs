@@ -1,7 +1,11 @@
+use std::str::FromStr;
+
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
-use anyhow::Result;
+use anyhow::{Ok, Result};
+use sui_sdk::types::base_types::{ObjectID, SuiAddress};
 //mod utils;
+use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
 //use utils::setup_for_read;
 
@@ -12,7 +16,18 @@ use futures::{future, stream::StreamExt};
 // If there is no wallet, it will create a wallet and two addresses, set one address as active,
 // and add 1 SUI to the active address.
 // By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
-
+pub async fn get_coins() -> Result<()> {
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
+    let address = SuiAddress::from_str("0x0000....0000")?;
+    let coins = sui
+        .coin_read_api()
+        .get_coins(address, None, None, None)
+        .await?;
+    println!(" *** Coins ***");
+    println!("{:?}", coins);
+    println!(" *** Coins ***\n");
+    Ok(())
+}
 
 pub async fn _coin_read_api() -> Result<()> {
     let (sui, active_address) = super::utils::setup_for_read().await?;
