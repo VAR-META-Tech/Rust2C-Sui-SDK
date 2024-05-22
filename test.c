@@ -49,6 +49,8 @@ int main()
     {
         printf("Demo test failed.\n");
     }
+    int64_t total_supply = get_total_supply_sync();
+    printf("total_supply : %llu\n", total_supply);
 
     return 0;
 }

@@ -1,7 +1,7 @@
 // rust_functions.h
 #ifndef RUST_FUNCTIONS_WRAPPER_H
 #define RUST_FUNCTIONS_WRAPPER_H
-
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -37,6 +37,7 @@ extern "C"
     int check_api_version(void);
     ResultCStringArray available_rpc_methods();
     ResultCStringArray available_subscriptions();
+    uint64_t get_total_supply_sync();
 
 #ifdef __cplusplus
 }

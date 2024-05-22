@@ -7,6 +7,7 @@ use sui_sdk::types::base_types::{ObjectID, SuiAddress};
 //mod utils;
 use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
+use sui_sdk::types::balance::Supply;
 //use utils::setup_for_read;
 
 // This example uses the coin read api to showcase the available
@@ -28,6 +29,20 @@ pub async fn get_coins() -> Result<()> {
     println!(" *** Coins ***\n");
     Ok(())
 }
+
+pub async fn get_total_supply() -> Result<Supply> {
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
+ // Total Supply
+    let total_supply: Supply = sui
+    .coin_read_api()
+    .get_total_supply("0x2::sui::SUI".to_string())
+    .await?;
+    println!(" *** Total Supply *** ");
+    println!("{:?}", total_supply);
+    println!(" *** Total Supply ***\n ");
+    Ok(total_supply)
+}
+
 
 pub async fn _coin_read_api() -> Result<()> {
     let (sui, active_address) = super::utils::setup_for_read().await?;

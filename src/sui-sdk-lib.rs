@@ -10,6 +10,7 @@ mod coin_read_api;
 mod sui_client;
 mod utils;
 use coin_read_api::_coin_read_api;
+use coin_read_api::get_total_supply;
 mod event_api;
 use event_api::_event_api;
 mod connect_sui_api;
@@ -276,4 +277,15 @@ pub extern "C" fn event_api() -> i32 {
             Err(_) => 1, // Return 1 or other error codes to indicate an error.
         }
     })
+}
+
+
+#[no_mangle]
+pub extern "C" fn get_total_supply_sync() -> u64 {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let result = runtime.block_on(get_total_supply());
+    match result {
+        Ok(supply) => supply.value,
+        Err(_) => 0, // Return 0 in case of error
+    }
 }
