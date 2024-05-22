@@ -6,7 +6,7 @@ int main()
 {
 
     // Call the Rust function to get the string array
-    ResultCStringArray result = available_subscriptions();
+    ResultCStringArray result = available_rpc_methods();
 
     // Check if there was an error
     if (result.error != NULL)
