@@ -2,6 +2,9 @@
 #ifndef RUST_FUNCTIONS_WRAPPER_H
 #define RUST_FUNCTIONS_WRAPPER_H
 #include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <inttypes.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -30,6 +33,15 @@ extern "C"
         CStringArray strings;
         const char *error;
     } ResultCStringArray;
+
+    // Define the Balance struct
+    typedef struct {
+    char* coin_type;
+    size_t coin_object_count;
+    uint64_t total_balance[2];
+    } Balance;
+
+
     void free_strings(CStringArray array);
     void free_error_string(const char *error);
     // SuiClient functions
@@ -37,7 +49,12 @@ extern "C"
     int check_api_version(void);
     ResultCStringArray available_rpc_methods();
     ResultCStringArray available_subscriptions();
+    // Read Coin function
     uint64_t get_total_supply_sync();
+
+     Balance get_balance_sync();
+     void free_balance(Balance balance);
+
 
 #ifdef __cplusplus
 }

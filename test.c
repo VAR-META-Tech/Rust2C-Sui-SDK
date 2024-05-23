@@ -51,6 +51,20 @@ int main()
     }
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
+    
+    Balance balance = get_balance_sync();
+    
+    if (balance.coin_type == NULL) {
+        printf("Failed to fetch balance.\n");
+    } else {
+        printf(" *** Balance ***\n");
+        printf("Coin Type: %s\n", balance.coin_type);
+        printf("Coin Object Count: %zu\n", balance.coin_object_count);
+        printf("Total Balance: 0x%" PRIx64 "%016" PRIx64 "\n", balance.total_balance[1], balance.total_balance[0]);
+        printf(" *** Balance ***\n");
+    }
 
+    // Free allocated resources
+    free_balance(balance);
     return 0;
 }

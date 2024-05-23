@@ -8,6 +8,7 @@ use sui_sdk::types::base_types::{ObjectID, SuiAddress};
 use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
 use sui_sdk::types::balance::Supply;
+use sui_json_rpc_types::Balance;
 //use utils::setup_for_read;
 
 // This example uses the coin read api to showcase the available
@@ -42,7 +43,19 @@ pub async fn get_total_supply() -> Result<Supply> {
     println!(" *** Total Supply ***\n ");
     Ok(total_supply)
 }
-
+pub async fn get_balance() -> Result<Balance> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
+      // Balance
+    // Returns the balance for the specified coin type for this address,
+    // or if None is passed, it will use Coin<SUI> as the coin type
+    let balance = sui
+        .coin_read_api()
+        .get_balance(active_address, None)
+        .await?;
+    println!(" *** Balance + Total Balance *** ");
+    println!("Balance: {:?}", balance);
+    Ok(balance)
+}
 
 pub async fn _coin_read_api() -> Result<()> {
     let (sui, active_address) = super::utils::setup_for_read().await?;

@@ -11,13 +11,15 @@ mod sui_client;
 mod utils;
 use coin_read_api::_coin_read_api;
 use coin_read_api::get_total_supply;
+use coin_read_api::get_balance;
+use std::collections::HashMap;
 mod event_api;
 use event_api::_event_api;
 mod connect_sui_api;
 use connect_sui_api::{connect_devnet, connect_localnet, connect_testnet};
 use once_cell::sync::OnceCell;
 use tokio::sync::Mutex;
-
+use sui_json_rpc_types::Balance;
 struct SuiClientSingleton {
     client: Mutex<Option<SuiClient>>,
 }
@@ -287,5 +289,58 @@ pub extern "C" fn get_total_supply_sync() -> u64 {
     match result {
         Ok(supply) => supply.value,
         Err(_) => 0, // Return 0 in case of error
+    }
+}
+
+
+// C-compatible Balance struct
+#[repr(C)]
+pub struct CBalance {
+    coin_type: *const c_char,
+    coin_object_count: usize,
+    total_balance: [u64; 2],
+}
+
+// impl Balance {
+//     fn to_c_balance(&self) -> CBalance {
+//         let total_balance_bytes = self.total_balance.to_le_bytes();
+//         CBalance {
+//             coin_type: CString::new(self.coin_type.clone()).unwrap().into_raw(),
+//             coin_object_count: self.coin_object_count,
+//             total_balance: [
+//                 u64::from_le_bytes(total_balance_bytes[0..8].try_into().unwrap()),
+//                 u64::from_le_bytes(total_balance_bytes[8..16].try_into().unwrap()),
+//             ],
+//         }
+//     }
+// }
+
+#[no_mangle]
+pub extern "C" fn get_balance_sync() -> CBalance {
+    // This is a placeholder function that simulates fetching a Balance
+    let runtime =  tokio::runtime::Runtime::new().unwrap();
+    let balance = runtime.block_on(get_balance()).unwrap_or_else(|_| Balance {
+        coin_type: "".to_string(),
+        coin_object_count: 0,
+        total_balance: 0,
+        locked_balance: HashMap::new(),
+    });
+    let total_balance_bytes = balance.total_balance.to_le_bytes();
+    CBalance {
+        coin_type: CString::new(balance.coin_type.clone()).unwrap().into_raw(),
+        coin_object_count: balance.coin_object_count,
+        total_balance: [
+            u64::from_le_bytes(total_balance_bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(total_balance_bytes[8..16].try_into().unwrap()),
+        ],
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn free_balance(balance: CBalance) {
+    if !balance.coin_type.is_null() {
+        unsafe {
+            drop(CString::from_raw(balance.coin_type as *mut c_char));
+        }
     }
 }
