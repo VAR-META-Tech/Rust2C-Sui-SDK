@@ -52,9 +52,20 @@ pub async fn get_balance() -> Result<Balance> {
         .coin_read_api()
         .get_balance(active_address, None)
         .await?;
-    println!(" *** Balance + Total Balance *** ");
+    println!(" *** Balance ");
     println!("Balance: {:?}", balance);
     Ok(balance)
+}
+pub async fn get_all_balances() -> Result<Vec<Balance>> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
+      // Balance
+   // Total balance
+    // Returns the balance for each coin owned by this address
+    let total_balance = sui.coin_read_api().get_all_balances(active_address).await?;
+    println!(" *** Total Balance *** ");
+    println!("Total Balance: {:?}", total_balance);
+    println!(" *** Total Balance ***\n ");
+    Ok(total_balance)
 }
 
 pub async fn _coin_read_api() -> Result<()> {

@@ -51,7 +51,7 @@ int main()
     }
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
-    
+
     Balance balance = get_balance_sync();
     
     if (balance.coin_type == NULL) {
@@ -60,11 +60,36 @@ int main()
         printf(" *** Balance ***\n");
         printf("Coin Type: %s\n", balance.coin_type);
         printf("Coin Object Count: %zu\n", balance.coin_object_count);
-        printf("Total Balance: 0x%" PRIx64 "%016" PRIx64 "\n", balance.total_balance[1], balance.total_balance[0]);
+        __uint128_t total_balance = ((__uint128_t)balance.total_balance[1] << 64) | balance.total_balance[0];
+        char total_balance_str[40]; // Enough to hold 2^128-1
+        snprintf(total_balance_str, sizeof(total_balance_str), "%llu", total_balance);
+        printf("Total Balance: %s\n", total_balance_str);
         printf(" *** Balance ***\n");
     }
 
     // Free allocated resources
     free_balance(balance);
+
+    BalanceArray balance_array = get_all_balances_sync();
+    
+    if (balance_array.balances == NULL) {
+        printf("Failed to fetch balances.\n");
+    } else {
+        printf(" *** All Balances ***\n");
+        for (size_t i = 0; i < balance_array.length; i++) {
+            Balance balance = balance_array.balances[i];
+            printf("Coin Type: %s\n", balance.coin_type);
+            printf("Coin Object Count: %zu\n", balance.coin_object_count);
+            __uint128_t total_balance = ((__uint128_t)balance.total_balance[1] << 64) | balance.total_balance[0];
+            char total_balance_str[40]; // Enough to hold 2^128-1
+            snprintf(total_balance_str, sizeof(total_balance_str), "%llu", total_balance);
+            printf("Total Balance: %s\n", total_balance_str);
+        }
+        printf(" *** All Balances ***\n");
+    }
+
+    // Free allocated resources
+    free_balance_array(balance_array);
+    
     return 0;
 }

@@ -12,6 +12,7 @@ mod utils;
 use coin_read_api::_coin_read_api;
 use coin_read_api::get_total_supply;
 use coin_read_api::get_balance;
+use coin_read_api::get_all_balances;
 use std::collections::HashMap;
 mod event_api;
 use event_api::_event_api;
@@ -343,4 +344,65 @@ pub extern "C" fn free_balance(balance: CBalance) {
             drop(CString::from_raw(balance.coin_type as *mut c_char));
         }
     }
+}
+
+// C-compatible vector of balances
+#[repr(C)]
+pub struct CBalanceArray {
+    balances: *const CBalance,
+    length: usize,
+}
+/// Wrapper for the Balance struct to implement methods
+pub struct BalanceWrapper(Balance);
+
+impl BalanceWrapper {
+    fn to_c_balance(&self) -> CBalance {
+        let total_balance_bytes = self.0.total_balance.to_le_bytes();
+        CBalance {
+            coin_type: CString::new(self.0.coin_type.clone()).unwrap().into_raw(),
+            coin_object_count: self.0.coin_object_count,
+            total_balance: [
+                u64::from_le_bytes(total_balance_bytes[0..8].try_into().unwrap()),
+                u64::from_le_bytes(total_balance_bytes[8..16].try_into().unwrap()),
+            ],
+        }
+    }
+}
+// Function to convert a vector of Balances to a CBalanceArray
+fn to_c_balance_array(balances: Vec<Balance>) -> CBalanceArray {
+    let c_balances: Vec<CBalance> = balances.iter().map(|b| BalanceWrapper(b.clone()).to_c_balance()).collect();
+    let length = c_balances.len();
+    let balances_ptr = c_balances.as_ptr();
+    std::mem::forget(c_balances); // Prevent Rust from freeing the memory
+    CBalanceArray { balances: balances_ptr, length }
+}
+
+// Function to free a CBalanceArray
+#[no_mangle]
+pub extern "C" fn free_balance_array(balance_array: CBalanceArray) {
+    if !balance_array.balances.is_null() {
+        unsafe {
+            let balances_slice = std::slice::from_raw_parts_mut(
+                balance_array.balances as *mut CBalance,
+                balance_array.length
+            );
+            for balance in balances_slice.iter() {
+                if !balance.coin_type.is_null() {
+                    drop(CString::from_raw(balance.coin_type as *mut c_char));
+                }
+            }
+            drop(Vec::from_raw_parts(
+                balance_array.balances as *mut CBalance,
+                balance_array.length,
+                balance_array.length,
+            ));
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_all_balances_sync() -> CBalanceArray {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let balances = runtime.block_on(get_all_balances()).unwrap_or_else(|_| Vec::new());
+    to_c_balance_array(balances)
 }

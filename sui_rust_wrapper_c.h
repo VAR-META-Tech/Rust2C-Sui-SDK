@@ -42,6 +42,13 @@ extern "C"
     } Balance;
 
 
+    // Define the BalanceArray struct
+    typedef struct {
+    Balance* balances;
+    size_t length;
+    } BalanceArray;
+
+
     void free_strings(CStringArray array);
     void free_error_string(const char *error);
     // SuiClient functions
@@ -55,6 +62,9 @@ extern "C"
      Balance get_balance_sync();
      void free_balance(Balance balance);
 
+// Declare the Rust functions
+extern BalanceArray get_all_balances_sync();
+extern void free_balance_array(BalanceArray balance_array);
 
 #ifdef __cplusplus
 }
