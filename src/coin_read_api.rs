@@ -8,7 +8,7 @@ use sui_sdk::types::base_types::{ObjectID, SuiAddress};
 use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
 use sui_sdk::types::balance::Supply;
-use sui_json_rpc_types::Balance;
+use sui_json_rpc_types::{Balance, Coin, Page};
 //use utils::setup_for_read;
 
 // This example uses the coin read api to showcase the available
@@ -18,17 +18,29 @@ use sui_json_rpc_types::Balance;
 // If there is no wallet, it will create a wallet and two addresses, set one address as active,
 // and add 1 SUI to the active address.
 // By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
-pub async fn get_coins() -> Result<()> {
-    let sui = SuiClientSingleton::instance().get_or_init().await?;
-    let address = SuiAddress::from_str("0x0000....0000")?;
+
+pub async fn get_coins() -> Result<Page<Coin, ObjectID>> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
     let coins = sui
         .coin_read_api()
-        .get_coins(address, None, None, None)
+        .get_coins(active_address, None, None, None)
         .await?;
     println!(" *** Coins ***");
     println!("{:?}", coins);
+    
+    for (index, coin) in coins.data.iter().enumerate() {
+        println!("Coin {}:", index);
+        println!("  Coin Type: {}", coin.coin_type);
+       
+        let value = coin.coin_object_id.to_string();
+        println!("  Coin Object ID: {:?}", value);
+        println!("  Version: {}", coin.version.value());
+        println!("  Digest: {:?}", coin.digest);
+        println!("  Balance: {}", coin.balance);
+        println!("  Previous Transaction: {:?}", coin.previous_transaction);
+    }
     println!(" *** Coins ***\n");
-    Ok(())
+    Ok(coins)
 }
 
 pub async fn get_total_supply() -> Result<Supply> {

@@ -49,6 +49,7 @@ int main()
     {
         printf("Demo test failed.\n");
     }
+    
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
 
@@ -91,5 +92,36 @@ int main()
     // Free allocated resources
     free_balance_array(balance_array);
     
+
+    // Call Rust function to get coins
+    CCoinArray coins = get_coins_sync();
+
+    // Iterate over the coins and print their details
+    for (size_t i = 0; i < coins.length; i++) {
+        CCoin coin = coins.coins[i];
+        printf("Coin %zu:\n", i);
+        printf("  Coin Type: %s\n", coin.coin_type);
+        printf("  Coin Object ID: "); // Print the coin object ID if needed
+        for (size_t j = 0; j < sizeof(coin.coin_object_id); j++) {
+            printf("%02X ", coin.coin_object_id[j]);
+        }
+        printf("\n");
+        printf("  Version: %llu\n", coin.version);
+        printf("  Digest: "); // Print the coin object ID if needed
+        for (size_t j = 0; j < sizeof(coin.digest); j++) {
+            printf("%02X ", coin.digest[j]);
+        }
+        printf("\n  Balance: %llu\n", coin.balance);
+        
+         printf("  Previous Transaction: "); // Print the coin object ID if needed
+        for (size_t j = 0; j < sizeof(coin.previous_transaction); j++) {
+            printf("%02X ", coin.previous_transaction[j]);
+        }
+
+       
+    }
+
+    // Free the allocated memory for the coins array
+    free_coin_array(coins);
     return 0;
 }

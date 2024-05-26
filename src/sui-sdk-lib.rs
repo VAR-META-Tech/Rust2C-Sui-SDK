@@ -1,6 +1,7 @@
 use std::ffi::{c_char, c_int, CString};
 
 use sui_client::{_api_version, _available_rpc_methods, _available_subscriptions, _check_api_version};
+use sui_json_rpc_types::Page;
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
 use anyhow::Result;
@@ -13,6 +14,8 @@ use coin_read_api::_coin_read_api;
 use coin_read_api::get_total_supply;
 use coin_read_api::get_balance;
 use coin_read_api::get_all_balances;
+use coin_read_api::get_coins;
+
 use std::collections::HashMap;
 mod event_api;
 use event_api::_event_api;
@@ -21,6 +24,7 @@ use connect_sui_api::{connect_devnet, connect_localnet, connect_testnet};
 use once_cell::sync::OnceCell;
 use tokio::sync::Mutex;
 use sui_json_rpc_types::Balance;
+
 struct SuiClientSingleton {
     client: Mutex<Option<SuiClient>>,
 }
@@ -406,3 +410,71 @@ pub extern "C" fn get_all_balances_sync() -> CBalanceArray {
     let balances = runtime.block_on(get_all_balances()).unwrap_or_else(|_| Vec::new());
     to_c_balance_array(balances)
 }
+
+// Wrapper struct for Coin
+pub struct WrappedCoin {
+    pub inner: sui_json_rpc_types::Coin,
+}
+
+impl WrappedCoin {
+    pub fn to_c_coin(&self) -> CCoin {
+        CCoin {
+            coin_type: CString::new(self.inner.coin_type.clone()).unwrap().into_raw(),
+            coin_object_id: self.inner.coin_object_id.into_bytes(),
+            version: self.inner.version.value(),
+            digest: self.inner.digest.into_inner(),
+            balance: self.inner.balance,
+            previous_transaction: self.inner.previous_transaction.into_inner(),
+        }
+    }
+}
+
+// C-compatible structures
+#[repr(C)]
+pub struct CCoin {
+    coin_type: *const c_char,
+    coin_object_id: [u8; 32], // Changed to array of 32 bytes
+    version: u64,
+    digest: [u8; 32],
+    balance: u64,
+    previous_transaction:[u8; 32],
+}
+
+#[repr(C)]
+pub struct CCoinArray {
+    coins: *const CCoin,
+    length: usize,
+}
+
+// Function to convert a vector of WrappedCoins to a CCoinArray
+fn to_c_coin_array(coins: Vec<WrappedCoin>) -> CCoinArray {
+    let c_coins: Vec<CCoin> = coins.iter().map(|c| c.to_c_coin()).collect();
+    let length = c_coins.len();
+    let coins_ptr = c_coins.as_ptr();
+    std::mem::forget(c_coins); // Prevent Rust from freeing the memory
+    CCoinArray { coins: coins_ptr, length }
+}
+
+// Function to free a CCoinArray
+#[no_mangle]
+pub extern "C" fn free_coin_array(coin_array: CCoinArray) {
+    if !coin_array.coins.is_null() {
+        unsafe {
+            drop(Vec::from_raw_parts(
+                coin_array.coins as *mut CCoin,
+                coin_array.length,
+                coin_array.length,
+            ));
+        }
+    }
+}
+
+// Synchronous wrapper to call the async get_coins function
+#[no_mangle]
+pub extern "C" fn get_coins_sync() -> CCoinArray {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let coins = runtime.block_on(get_coins()).unwrap_or_else(|_| Page { data: Vec::new(), next_cursor: None, has_next_page: false });
+    let wrapped_coins: Vec<WrappedCoin> = coins.data.into_iter().map(|inner| WrappedCoin { inner }).collect();
+    to_c_coin_array(wrapped_coins)
+}
+

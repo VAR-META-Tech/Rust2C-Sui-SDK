@@ -48,7 +48,21 @@ extern "C"
     size_t length;
     } BalanceArray;
 
+// Define the C struct for Coin
+    typedef struct {
+    const char* coin_type;
+    uint8_t coin_object_id[32];
+    uint64_t version;
+    uint8_t digest[32];
+    uint64_t balance;
+    uint8_t previous_transaction[32];
+} CCoin;
 
+// Define the C struct for an array of CCoin
+    typedef struct {
+    CCoin* coins;
+    size_t length;
+    } CCoinArray;
     void free_strings(CStringArray array);
     void free_error_string(const char *error);
     // SuiClient functions
@@ -65,6 +79,9 @@ extern "C"
 // Declare the Rust functions
 extern BalanceArray get_all_balances_sync();
 extern void free_balance_array(BalanceArray balance_array);
+
+extern CCoinArray get_coins_sync();
+extern void free_coin_array(CCoinArray coins);
 
 #ifdef __cplusplus
 }
