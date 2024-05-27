@@ -86,14 +86,18 @@ pub fn get_wallet_from_address() -> Result<(), Box<dyn std::error::Error>> {
     println!("address {:?}", address);
     let key = keystore.get_key(&address)?;
     println!("key {:?}", key);
+    println!("key encode_base64 {:?}", key.encode_base64());
+    println!("key private key {:?}", key.encode());
     println!("public {:?}", key.public().encode_base64());
-    // Extract the private key from the keypair
-    let private_key = match key {
-        SuiKeyPair::Ed25519(kp) => kp.encode_base64(),
-        SuiKeyPair::Secp256k1(kp) => kp.encode_base64(),
-        SuiKeyPair::Secp256r1(kp) => kp.encode_base64(),
-    };
-    println!("private_key {:?}", key.public().encode_base64());
 
+    Ok(())
+}
+
+pub fn generate_new() -> Result<(), anyhow::Error> {
+    let (address, kp, scheme, phrase) = generate_new_key(SignatureScheme::ED25519, None, None)?;
+    println!("address {:?}", address);
+    println!("keypair {:?}", kp);
+    println!("mnemonic {:?}", phrase);
+    println!("scheme {:?}", scheme);
     Ok(())
 }

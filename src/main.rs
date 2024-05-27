@@ -21,7 +21,10 @@ use sui_types::{
 mod wallet;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    wallet::get_addresses();
-    wallet::get_keys();
+    wallet::get_wallet_from_address();
+    // wallet::generate_new();
+    // wallet::generate_and_add_key();
+    // wallet::get_addresses();
+    // wallet::get_keys();
     Ok(())
 }
