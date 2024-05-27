@@ -1,53 +1,27 @@
+// Copyright (c) Mysten Labs, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+use std::fs;
+use std::path::PathBuf;
 use std::str::FromStr;
 
-use once_cell::sync::OnceCell;
-use sui_sdk::error::Error;
-use sui_sdk::{SuiClient, SuiClientBuilder};
-use tokio::sync::Mutex;
-struct SuiClientSingleton {
-    client: Mutex<Option<SuiClient>>,
-}
+use fastcrypto::hash::HashFunction;
+use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
+use rand::Error;
+use sui_keys::key_derive::generate_new_key;
+use tempfile::TempDir;
 
-impl SuiClientSingleton {
-    fn instance() -> &'static SuiClientSingleton {
-        static INSTANCE: OnceCell<SuiClientSingleton> = OnceCell::new();
-        INSTANCE.get_or_init(|| SuiClientSingleton {
-            client: Mutex::new(None),
-        })
-    }
+use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, InMemKeystore, Keystore};
+use sui_types::crypto::{DefaultHash, SignatureScheme, SuiKeyPair, SuiSignatureInner};
+use sui_types::{
+    base_types::{SuiAddress, SUI_ADDRESS_LENGTH},
+    crypto::Ed25519SuiSignature,
+};
 
-    async fn get_or_init(&self) -> Result<SuiClient, Error> {
-        let mut client_guard = self.client.lock().await;
-        if let Some(client) = &*client_guard {
-            Ok(client.clone())
-        } else {
-            let client = SuiClientBuilder::default().build_devnet().await?;
-            *client_guard = Some(client.clone());
-            Ok(client)
-        }
-    }
-}
+mod wallet;
 
-#[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
-    let sui_singleton = SuiClientSingleton::instance();
-
-    // Retrieve the singleton instance of SuiClient
-    let sui_client = sui_singleton.get_or_init().await?;
-    println!("SuiClient initialized.");
-
-    // If called again, it will return the cached instance
-    let sui_client_cached = sui_singleton.get_or_init().await?;
-    println!("SuiClient retrieved from cache.");
-
-    println!("Sui testnet version is: {}", sui_client.api_version());
-    println!(
-        "available_rpc_methods: {:?}",
-        sui_client.available_rpc_methods()
-    );
-    println!(
-        "available_subscriptions: {:?}",
-        sui_client.available_subscriptions()
-    );
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    wallet::get_addresses();
+    wallet::get_keys();
     Ok(())
 }
