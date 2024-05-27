@@ -1,7 +1,10 @@
 // rust_functions.h
 #ifndef RUST_FUNCTIONS_WRAPPER_H
 #define RUST_FUNCTIONS_WRAPPER_H
-
+#include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <inttypes.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -30,6 +33,36 @@ extern "C"
         CStringArray strings;
         const char *error;
     } ResultCStringArray;
+
+    // Define the Balance struct
+    typedef struct {
+    char* coin_type;
+    size_t coin_object_count;
+    uint64_t total_balance[2];
+    } Balance;
+
+
+    // Define the BalanceArray struct
+    typedef struct {
+    Balance* balances;
+    size_t length;
+    } BalanceArray;
+
+// Define the C struct for Coin
+    typedef struct {
+    const char* coin_type;
+    uint8_t coin_object_id[32];
+    uint64_t version;
+    uint8_t digest[32];
+    uint64_t balance;
+    uint8_t previous_transaction[32];
+} CCoin;
+
+// Define the C struct for an array of CCoin
+    typedef struct {
+    CCoin* coins;
+    size_t length;
+    } CCoinArray;
     void free_strings(CStringArray array);
     void free_error_string(const char *error);
     // SuiClient functions
@@ -37,6 +70,18 @@ extern "C"
     int check_api_version(void);
     ResultCStringArray available_rpc_methods();
     ResultCStringArray available_subscriptions();
+    // Read Coin function
+    uint64_t get_total_supply_sync();
+
+     Balance get_balance_sync();
+     void free_balance(Balance balance);
+
+// Declare the Rust functions
+extern BalanceArray get_all_balances_sync();
+extern void free_balance_array(BalanceArray balance_array);
+
+extern CCoinArray get_coins_sync();
+extern void free_coin_array(CCoinArray coins);
 
 #ifdef __cplusplus
 }

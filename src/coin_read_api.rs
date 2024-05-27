@@ -7,6 +7,8 @@ use sui_sdk::types::base_types::{ObjectID, SuiAddress};
 //mod utils;
 use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
+use sui_sdk::types::balance::Supply;
+use sui_json_rpc_types::{Balance, Coin, Page};
 //use utils::setup_for_read;
 
 // This example uses the coin read api to showcase the available
@@ -16,17 +18,66 @@ use futures::{future, stream::StreamExt};
 // If there is no wallet, it will create a wallet and two addresses, set one address as active,
 // and add 1 SUI to the active address.
 // By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
-pub async fn get_coins() -> Result<()> {
-    let sui = SuiClientSingleton::instance().get_or_init().await?;
-    let address = SuiAddress::from_str("0x0000....0000")?;
+
+pub async fn get_coins() -> Result<Page<Coin, ObjectID>> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
     let coins = sui
         .coin_read_api()
-        .get_coins(address, None, None, None)
+        .get_coins(active_address, None, None, None)
         .await?;
     println!(" *** Coins ***");
     println!("{:?}", coins);
+    
+    for (index, coin) in coins.data.iter().enumerate() {
+        println!("Coin {}:", index);
+        println!("  Coin Type: {}", coin.coin_type);
+       
+        let value = coin.coin_object_id.to_string();
+        println!("  Coin Object ID: {:?}", value);
+        println!("  Version: {}", coin.version.value());
+        println!("  Digest: {:?}", coin.digest);
+        println!("  Balance: {}", coin.balance);
+        println!("  Previous Transaction: {:?}", coin.previous_transaction);
+    }
     println!(" *** Coins ***\n");
-    Ok(())
+    Ok(coins)
+}
+
+pub async fn get_total_supply() -> Result<Supply> {
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
+ // Total Supply
+    let total_supply: Supply = sui
+    .coin_read_api()
+    .get_total_supply("0x2::sui::SUI".to_string())
+    .await?;
+    println!(" *** Total Supply *** ");
+    println!("{:?}", total_supply);
+    println!(" *** Total Supply ***\n ");
+    Ok(total_supply)
+}
+pub async fn get_balance() -> Result<Balance> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
+      // Balance
+    // Returns the balance for the specified coin type for this address,
+    // or if None is passed, it will use Coin<SUI> as the coin type
+    let balance = sui
+        .coin_read_api()
+        .get_balance(active_address, None)
+        .await?;
+    println!(" *** Balance ");
+    println!("Balance: {:?}", balance);
+    Ok(balance)
+}
+pub async fn get_all_balances() -> Result<Vec<Balance>> {
+    let (sui, active_address) = super::utils::setup_for_read().await?;
+      // Balance
+   // Total balance
+    // Returns the balance for each coin owned by this address
+    let total_balance = sui.coin_read_api().get_all_balances(active_address).await?;
+    println!(" *** Total Balance *** ");
+    println!("Total Balance: {:?}", total_balance);
+    println!(" *** Total Balance ***\n ");
+    Ok(total_balance)
 }
 
 pub async fn _coin_read_api() -> Result<()> {
