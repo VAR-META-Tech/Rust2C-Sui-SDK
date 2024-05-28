@@ -3,58 +3,21 @@
 #include "sui_rust_wrapper_c.h"
 
 int main()
-{
-
-    // Call the Rust function to get the string array
-    ResultCStringArray result = available_rpc_methods();
-
-    // Check if there was an error
-    if (result.error != NULL)
-    {
-        printf("Error: %s\n", result.error);
-        free_error_string(result.error);
-    }
-    else
-    {
-        // Print the strings
-        for (int i = 0; i < result.strings.len; i++)
-        {
-            printf("String %d: %s\n", i, result.strings.data[i]);
-        }
-
-        // Free the allocated string array memory
-        free_strings(result.strings);
-    }
-
-    const char *version = api_version();
-
-    printf("Get api Version : %s\n", version);
-
-    int check_api_version_result = check_api_version();
-    if (check_api_version_result == 0)
-    {
-        printf("Api version match.\n");
-    }
-    else
-    {
-        printf("API Version not match.\n");
-    }
-
-    int test_result = test();
-    if (test_result == 0)
-    {
-        printf("Demo test succeeded.\n");
-    }
-    else
-    {
-        printf("Demo test failed.\n");
-    }
+{    
+    //To Demo Coid Read API Function Please change Test.sh content:
     
+    /*******************************
+    cargo build --release
+    gcc src/Demo/coin_read_api.c -L target/release/ -lsui_rust_sdk -o test
+    ./test  
+    ********************************/
+
+    // Demo get_total_supply_sync 
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
 
+    // Demo get_balance_sync 
     Balance balance = get_balance_sync();
-    
     if (balance.coin_type == NULL) {
         printf("Failed to fetch balance.\n");
     } else {
@@ -67,10 +30,10 @@ int main()
         printf("Total Balance: %s\n", total_balance_str);
         printf(" *** Balance ***\n");
     }
-
     // Free allocated resources
     free_balance(balance);
 
+    // Demo get_all_balances_sync
     BalanceArray balance_array = get_all_balances_sync();
     
     if (balance_array.balances == NULL) {
@@ -88,14 +51,11 @@ int main()
         }
         printf(" *** All Balances ***\n");
     }
-
     // Free allocated resources
     free_balance_array(balance_array);
     
-
-    // Call Rust function to get coins
+    // Demo get_coins_sync
     CCoinArray coins = get_coins_sync();
-
     // Iterate over the coins and print their details
     for (size_t i = 0; i < coins.length; i++) {
         CCoin coin = coins.coins[i];
@@ -120,7 +80,6 @@ int main()
 
        
     }
-
     // Free the allocated memory for the coins array
     free_coin_array(coins);
     return 0;
