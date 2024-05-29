@@ -1,6 +1,8 @@
+use std::ffi::CStr;
 use std::ffi::{c_char, c_int, CString};
-
-use sui_client::{_api_version, _available_rpc_methods, _available_subscriptions, _check_api_version};
+use sui_client::{
+    _api_version, _available_rpc_methods, _available_subscriptions, _check_api_version,
+};
 use sui_json_rpc_types::Page;
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
@@ -10,11 +12,13 @@ use tokio::runtime; // Using Tokio as the async runtime
 mod coin_read_api;
 mod sui_client;
 mod utils;
+mod wallet;
 use coin_read_api::_coin_read_api;
-use coin_read_api::get_total_supply;
-use coin_read_api::get_balance;
 use coin_read_api::get_all_balances;
+use coin_read_api::get_balance;
 use coin_read_api::get_coins;
+use coin_read_api::get_total_supply;
+use wallet::Wallet;
 
 use std::collections::HashMap;
 mod event_api;
@@ -22,8 +26,8 @@ use event_api::_event_api;
 mod connect_sui_api;
 use connect_sui_api::{connect_devnet, connect_localnet, connect_testnet};
 use once_cell::sync::OnceCell;
-use tokio::sync::Mutex;
 use sui_json_rpc_types::Balance;
+use tokio::sync::Mutex;
 
 struct SuiClientSingleton {
     client: Mutex<Option<SuiClient>>,
@@ -76,6 +80,58 @@ pub extern "C" fn test() -> i32 {
             Err(_) => 1, // Return 1 or other error codes to indicate an error.
         }
     })
+}
+
+//Wallet
+#[no_mangle]
+pub extern "C" fn free_wallet(wallet: *mut Wallet) {
+    if !wallet.is_null() {
+        let mut wallet = unsafe { Box::from_raw(wallet) };
+        wallet.free();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn generate_wallet() -> *mut Wallet {
+    let wallet = wallet::generate_new().unwrap();
+    Box::into_raw(Box::new(wallet))
+}
+
+#[no_mangle]
+pub extern "C" fn generate_and_add_key() -> *mut Wallet {
+    let wallet = wallet::generate_and_add_key().unwrap();
+    Box::into_raw(Box::new(wallet))
+}
+
+#[no_mangle]
+pub extern "C" fn get_wallet_from_address(address: *const c_char) -> *mut Wallet {
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let wallet = wallet::get_wallet_from_address(address_str).unwrap();
+    Box::into_raw(Box::new(wallet))
+}
+
+#[no_mangle]
+pub extern "C" fn import_from_private_key(key_base64: *const c_char) {
+    let c_str = unsafe {
+        assert!(!key_base64.is_null());
+        CStr::from_ptr(key_base64)
+    };
+    let key_base64_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let _ = wallet::import_from_private_key(key_base64_str);
+}
+
+#[no_mangle]
+pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char) {
+    let c_str = unsafe {
+        assert!(!mnemonic.is_null());
+        CStr::from_ptr(mnemonic)
+    };
+    let mnemonic_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let _ = wallet::import_from_mnemonic(mnemonic_str);
 }
 
 // Struct to hold C-compatible string array
@@ -286,7 +342,6 @@ pub extern "C" fn event_api() -> i32 {
     })
 }
 
-
 #[no_mangle]
 pub extern "C" fn get_total_supply_sync() -> u64 {
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -296,7 +351,6 @@ pub extern "C" fn get_total_supply_sync() -> u64 {
         Err(_) => 0, // Return 0 in case of error
     }
 }
-
 
 // C-compatible Balance struct
 #[repr(C)]
@@ -323,7 +377,7 @@ pub struct CBalance {
 #[no_mangle]
 pub extern "C" fn get_balance_sync() -> CBalance {
     // This is a placeholder function that simulates fetching a Balance
-    let runtime =  tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
     let balance = runtime.block_on(get_balance()).unwrap_or_else(|_| Balance {
         coin_type: "".to_string(),
         coin_object_count: 0,
@@ -374,11 +428,17 @@ impl BalanceWrapper {
 }
 // Function to convert a vector of Balances to a CBalanceArray
 fn to_c_balance_array(balances: Vec<Balance>) -> CBalanceArray {
-    let c_balances: Vec<CBalance> = balances.iter().map(|b| BalanceWrapper(b.clone()).to_c_balance()).collect();
+    let c_balances: Vec<CBalance> = balances
+        .iter()
+        .map(|b| BalanceWrapper(b.clone()).to_c_balance())
+        .collect();
     let length = c_balances.len();
     let balances_ptr = c_balances.as_ptr();
     std::mem::forget(c_balances); // Prevent Rust from freeing the memory
-    CBalanceArray { balances: balances_ptr, length }
+    CBalanceArray {
+        balances: balances_ptr,
+        length,
+    }
 }
 
 // Function to free a CBalanceArray
@@ -388,7 +448,7 @@ pub extern "C" fn free_balance_array(balance_array: CBalanceArray) {
         unsafe {
             let balances_slice = std::slice::from_raw_parts_mut(
                 balance_array.balances as *mut CBalance,
-                balance_array.length
+                balance_array.length,
             );
             for balance in balances_slice.iter() {
                 if !balance.coin_type.is_null() {
@@ -407,7 +467,9 @@ pub extern "C" fn free_balance_array(balance_array: CBalanceArray) {
 #[no_mangle]
 pub extern "C" fn get_all_balances_sync() -> CBalanceArray {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let balances = runtime.block_on(get_all_balances()).unwrap_or_else(|_| Vec::new());
+    let balances = runtime
+        .block_on(get_all_balances())
+        .unwrap_or_else(|_| Vec::new());
     to_c_balance_array(balances)
 }
 
@@ -419,7 +481,9 @@ pub struct WrappedCoin {
 impl WrappedCoin {
     pub fn to_c_coin(&self) -> CCoin {
         CCoin {
-            coin_type: CString::new(self.inner.coin_type.clone()).unwrap().into_raw(),
+            coin_type: CString::new(self.inner.coin_type.clone())
+                .unwrap()
+                .into_raw(),
             coin_object_id: self.inner.coin_object_id.into_bytes(),
             version: self.inner.version.value(),
             digest: self.inner.digest.into_inner(),
@@ -437,7 +501,7 @@ pub struct CCoin {
     version: u64,
     digest: [u8; 32],
     balance: u64,
-    previous_transaction:[u8; 32],
+    previous_transaction: [u8; 32],
 }
 
 #[repr(C)]
@@ -452,7 +516,10 @@ fn to_c_coin_array(coins: Vec<WrappedCoin>) -> CCoinArray {
     let length = c_coins.len();
     let coins_ptr = c_coins.as_ptr();
     std::mem::forget(c_coins); // Prevent Rust from freeing the memory
-    CCoinArray { coins: coins_ptr, length }
+    CCoinArray {
+        coins: coins_ptr,
+        length,
+    }
 }
 
 // Function to free a CCoinArray
@@ -473,8 +540,15 @@ pub extern "C" fn free_coin_array(coin_array: CCoinArray) {
 #[no_mangle]
 pub extern "C" fn get_coins_sync() -> CCoinArray {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let coins = runtime.block_on(get_coins()).unwrap_or_else(|_| Page { data: Vec::new(), next_cursor: None, has_next_page: false });
-    let wrapped_coins: Vec<WrappedCoin> = coins.data.into_iter().map(|inner| WrappedCoin { inner }).collect();
+    let coins = runtime.block_on(get_coins()).unwrap_or_else(|_| Page {
+        data: Vec::new(),
+        next_cursor: None,
+        has_next_page: false,
+    });
+    let wrapped_coins: Vec<WrappedCoin> = coins
+        .data
+        .into_iter()
+        .map(|inner| WrappedCoin { inner })
+        .collect();
     to_c_coin_array(wrapped_coins)
 }
-
