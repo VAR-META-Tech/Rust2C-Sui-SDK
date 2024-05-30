@@ -28,5 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // wallet::get_keys();
     // wallet::import_from_mnemonic();
     // wallet::import_from_private_key();
+    wallet::get_wallets();
     Ok(())
 }

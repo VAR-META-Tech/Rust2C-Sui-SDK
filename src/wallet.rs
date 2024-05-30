@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Ok};
 use serde_test::Configure;
 use std::ffi::{c_char, CStr, CString};
 use std::fmt::Debug;
@@ -147,6 +147,18 @@ pub fn get_keys() {
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let keys = keystore.keys();
     println!("keys {:?}", keys);
+}
+
+pub fn get_wallets() -> Result<Vec<Wallet>, anyhow::Error> {
+    let keystore_path = default_keystore_path();
+    let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
+    let addresses = keystore.addresses();
+    let mut wallets: Vec<Wallet> = Vec::new();
+    for address in addresses.iter() {
+        wallets.push(get_wallet_from_address(address.to_string().as_str()).unwrap())
+    }
+
+    Ok(wallets)
 }
 
 pub fn generate_and_add_key() -> Result<Wallet, anyhow::Error> {

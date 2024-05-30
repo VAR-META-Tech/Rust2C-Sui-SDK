@@ -83,6 +83,38 @@ pub extern "C" fn test() -> i32 {
 }
 
 //Wallet
+
+#[repr(C)]
+pub struct WalletList {
+    wallets: *mut Wallet,
+    length: usize,
+}
+
+#[no_mangle]
+pub extern "C" fn get_wallets() -> WalletList {
+    let wallets = wallet::get_wallets().unwrap();
+
+    let mut wallets = wallets.into_boxed_slice();
+    let wallet_ptr = wallets.as_mut_ptr();
+    let length = wallets.len();
+    std::mem::forget(wallets);
+
+    WalletList {
+        wallets: wallet_ptr,
+        length,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn free_wallet_list(wallet_list: WalletList) {
+    unsafe {
+        let wallets =
+            Vec::from_raw_parts(wallet_list.wallets, wallet_list.length, wallet_list.length);
+        for mut wallet in wallets {
+            wallet.free();
+        }
+    }
+}
 #[no_mangle]
 pub extern "C" fn free_wallet(wallet: *mut Wallet) {
     if !wallet.is_null() {
