@@ -36,7 +36,7 @@ struct FaucetResponse {
     error: Option<String>,
 }
 
-// const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
+const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
 
 //pub const SUI_FAUCET: &str = "https://faucet.testnet.sui.io/v1/gas"; // testnet faucet
 
