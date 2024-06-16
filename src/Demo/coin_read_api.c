@@ -11,15 +11,15 @@ int main()
     gcc src/Demo/coin_read_api.c -L target/release/ -lsui_rust_sdk -o test
     ./test  
     ********************************/
-   printf("coin_read_api Start :\n");
-    int res = coin_read_api();
-     printf("coin_read_api End :\n");
+//    printf("coin_read_api Start :\n");
+//    // int res = coin_read_api();
+//      printf("coin_read_api End :\n");
     // Demo get_total_supply_sync 
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
 
     // Demo get_balance_sync 
-    Balance balance = get_balance_sync();
+    Balance balance = get_balance_sync("0x970e38884dc3a67c074efa7cf219f9aff63a6fd8297733af6cf076428cfa8303");
     if (balance.coin_type == NULL) {
         printf("Failed to fetch balance.\n");
     } else {
@@ -36,7 +36,7 @@ int main()
     free_balance(balance);
 
     // Demo get_all_balances_sync
-    BalanceArray balance_array = get_all_balances_sync();
+    BalanceArray balance_array = get_all_balances_sync("0x970e38884dc3a67c074efa7cf219f9aff63a6fd8297733af6cf076428cfa8303");
     
     if (balance_array.balances == NULL) {
         printf("Failed to fetch balances.\n");
@@ -57,7 +57,8 @@ int main()
     free_balance_array(balance_array);
     
     // Demo get_coins_sync
-    CCoinArray coins = get_coins_sync();
+    CCoinArray coins = get_coins_sync("0x970e38884dc3a67c074efa7cf219f9aff63a6fd8297733af6cf076428cfa8303");
+   // CCoinArray coins = get_coins_sync("0x21214e05a2bbc228e064bec68b6d21f3947a8993bf0f0c39d8ddba58335b5001");
     // Iterate over the coins and print their details
     for (size_t i = 0; i < coins.length; i++) {
         CCoin coin = coins.coins[i];

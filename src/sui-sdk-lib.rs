@@ -407,10 +407,15 @@ pub struct CBalance {
 // }
 
 #[no_mangle]
-pub extern "C" fn get_balance_sync() -> CBalance {
+pub extern "C" fn get_balance_sync(address: *const c_char) -> CBalance {
     // This is a placeholder function that simulates fetching a Balance
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let balance = runtime.block_on(get_balance()).unwrap_or_else(|_| Balance {
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let balance = runtime.block_on(get_balance(address_str)).unwrap_or_else(|_| Balance {
         coin_type: "".to_string(),
         coin_object_count: 0,
         total_balance: 0,
@@ -497,10 +502,15 @@ pub extern "C" fn free_balance_array(balance_array: CBalanceArray) {
 }
 
 #[no_mangle]
-pub extern "C" fn get_all_balances_sync() -> CBalanceArray {
+pub extern "C" fn get_all_balances_sync(address: *const c_char) -> CBalanceArray {
     let runtime = tokio::runtime::Runtime::new().unwrap();
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
     let balances = runtime
-        .block_on(get_all_balances())
+        .block_on(get_all_balances(address_str))
         .unwrap_or_else(|_| Vec::new());
     to_c_balance_array(balances)
 }
@@ -576,9 +586,14 @@ pub extern "C" fn free_coin_array(coin_array: CCoinArray) {
 
 // Synchronous wrapper to call the async get_coins function
 #[no_mangle]
-pub extern "C" fn get_coins_sync() -> CCoinArray {
+pub extern "C" fn get_coins_sync(address: *const c_char) -> CCoinArray {
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let coins = runtime.block_on(get_coins()).unwrap_or_else(|_| Page {
+    let coins = runtime.block_on(get_coins(address_str)).unwrap_or_else(|_| Page {
         data: Vec::new(),
         next_cursor: None,
         has_next_page: false,

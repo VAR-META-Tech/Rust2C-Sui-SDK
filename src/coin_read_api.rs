@@ -3,7 +3,7 @@ use std::str::FromStr;
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 use anyhow::{Ok, Result};
-use sui_sdk::types::base_types::{ObjectID, SuiAddress};
+use sui_sdk::{types::base_types::{ObjectID, SuiAddress}, SuiClientBuilder};
 //mod utils;
 use super::SuiClientSingleton;
 use futures::{future, stream::StreamExt};
@@ -19,8 +19,11 @@ use sui_json_rpc_types::{Balance, Coin, Page};
 // and add 1 SUI to the active address.
 // By default, the example will use the Sui testnet network (fullnode.testnet.sui.io:443).
 
-pub async fn get_coins() -> Result<Page<Coin, ObjectID>> {
-    let (sui, active_address) = super::utils::setup_for_read().await?;
+pub async fn get_coins(address: &str) -> Result<Page<Coin, ObjectID>> {
+    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let active_address: SuiAddress = SuiAddress::from_str(address)?;
+    println!("Read Coin From address:{}", active_address.to_string());
+
     let coins = sui
         .coin_read_api()
         .get_coins(active_address, None, None, None)
@@ -55,8 +58,9 @@ pub async fn get_total_supply() -> Result<Supply> {
     println!(" *** Total Supply ***\n ");
     Ok(total_supply)
 }
-pub async fn get_balance() -> Result<Balance> {
-    let (sui, active_address) = super::utils::setup_for_read().await?;
+pub async fn get_balance(address: &str) -> Result<Balance> {
+    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let active_address: SuiAddress = SuiAddress::from_str(address)?;
       // Balance
     // Returns the balance for the specified coin type for this address,
     // or if None is passed, it will use Coin<SUI> as the coin type
@@ -68,8 +72,9 @@ pub async fn get_balance() -> Result<Balance> {
     println!("Balance: {:?}", balance);
     Ok(balance)
 }
-pub async fn get_all_balances() -> Result<Vec<Balance>> {
-    let (sui, active_address) = super::utils::setup_for_read().await?;
+pub async fn get_all_balances(address: &str) -> Result<Vec<Balance>> {
+    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let active_address: SuiAddress = SuiAddress::from_str(address)?;
       // Balance
    // Total balance
     // Returns the balance for each coin owned by this address

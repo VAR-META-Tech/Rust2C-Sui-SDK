@@ -76,14 +76,14 @@ extern "C"
     // Read Coin function
     uint64_t get_total_supply_sync();
 
-    Balance get_balance_sync();
+    Balance get_balance_sync(const char *address);
     void free_balance(Balance balance);
 
     // Declare the Rust functions
-    extern BalanceArray get_all_balances_sync();
+    extern BalanceArray get_all_balances_sync(const char *address);
     extern void free_balance_array(BalanceArray balance_array);
 
-    extern CCoinArray get_coins_sync();
+    extern CCoinArray get_coins_sync(const char *address);
     extern void free_coin_array(CCoinArray coins);
 
     // Wallet
