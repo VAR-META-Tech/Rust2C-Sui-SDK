@@ -1,5 +1,6 @@
 use std::ffi::CStr;
 use std::ffi::{c_char, c_int, CString};
+use std::ptr;
 use sui_client::{
     _api_version, _available_rpc_methods, _available_subscriptions, _check_api_version,
 };
@@ -509,17 +510,23 @@ pub struct WrappedCoin {
     pub inner: sui_json_rpc_types::Coin,
 }
 
+fn string_to_c_char(s: Option<String>) -> *mut c_char {
+    match s {
+        Some(str) => CString::new(str).unwrap().into_raw(),
+        None => ptr::null_mut(),
+    }
+}
 impl WrappedCoin {
     pub fn to_c_coin(&self) -> CCoin {
         CCoin {
             coin_type: CString::new(self.inner.coin_type.clone())
                 .unwrap()
                 .into_raw(),
-            coin_object_id: self.inner.coin_object_id.into_bytes(),
+            coin_object_id:string_to_c_char(Some(self.inner.coin_object_id.to_string())),
             version: self.inner.version.value(),
-            digest: self.inner.digest.into_inner(),
+            digest: string_to_c_char(Some(self.inner.digest.base58_encode())),
             balance: self.inner.balance,
-            previous_transaction: self.inner.previous_transaction.into_inner(),
+            previous_transaction: string_to_c_char(Some(self.inner.previous_transaction.base58_encode())),
         }
     }
 }
@@ -527,12 +534,12 @@ impl WrappedCoin {
 // C-compatible structures
 #[repr(C)]
 pub struct CCoin {
-    coin_type: *const c_char,
-    coin_object_id: [u8; 32], // Changed to array of 32 bytes
+    coin_type: *mut c_char,
+    coin_object_id: *mut c_char, // Changed to array of 32 bytes
     version: u64,
-    digest: [u8; 32],
+    digest: *mut c_char,
     balance: u64,
-    previous_transaction: [u8; 32],
+    previous_transaction: *mut c_char,
 }
 
 #[repr(C)]
@@ -576,6 +583,7 @@ pub extern "C" fn get_coins_sync() -> CCoinArray {
         next_cursor: None,
         has_next_page: false,
     });
+
     let wrapped_coins: Vec<WrappedCoin> = coins
         .data
         .into_iter()

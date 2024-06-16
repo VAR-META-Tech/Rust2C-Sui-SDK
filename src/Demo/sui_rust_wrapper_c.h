@@ -52,12 +52,12 @@ extern "C"
     // Define the C struct for Coin
     typedef struct
     {
-        const char *coin_type;
-        uint8_t coin_object_id[32];
+        char * coin_type;
+        char * coin_object_id;
         uint64_t version;
-        uint8_t digest[32];
+        char * digest;
         uint64_t balance;
-        uint8_t previous_transaction[32];
+        char * previous_transaction;
     } CCoin;
 
     // Define the C struct for an array of CCoin

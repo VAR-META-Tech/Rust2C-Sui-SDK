@@ -11,7 +11,9 @@ int main()
     gcc src/Demo/coin_read_api.c -L target/release/ -lsui_rust_sdk -o test
     ./test  
     ********************************/
-
+   printf("coin_read_api Start :\n");
+    int res = coin_read_api();
+     printf("coin_read_api End :\n");
     // Demo get_total_supply_sync 
     int64_t total_supply = get_total_supply_sync();
     printf("total_supply : %llu\n", total_supply);
@@ -61,22 +63,22 @@ int main()
         CCoin coin = coins.coins[i];
         printf("Coin %zu:\n", i);
         printf("  Coin Type: %s\n", coin.coin_type);
-        printf("  Coin Object ID: "); // Print the coin object ID if needed
-        for (size_t j = 0; j < sizeof(coin.coin_object_id); j++) {
-            printf("%02X ", coin.coin_object_id[j]);
-        }
+        printf("  Coin Object ID: %s\n",coin.coin_object_id); // Print the coin object ID if needed
+        // for (size_t j = 0; j < sizeof(coin.coin_object_id); j++) {
+        //     printf("%02X ", coin.coin_object_id[j]);
+        // }
         printf("\n");
         printf("  Version: %llu\n", coin.version);
-        printf("  Digest: "); // Print the coin object ID if needed
-        for (size_t j = 0; j < sizeof(coin.digest); j++) {
-            printf("%02X ", coin.digest[j]);
-        }
+        printf("  Digest: %s\n,",coin.digest); // Print the coin object ID if needed
+        // for (size_t j = 0; j < sizeof(coin.digest); j++) {
+        //     printf("%02X ", coin.digest[j]);
+        // }
         printf("\n  Balance: %llu\n", coin.balance);
         
-         printf("  Previous Transaction: "); // Print the coin object ID if needed
-        for (size_t j = 0; j < sizeof(coin.previous_transaction); j++) {
-            printf("%02X ", coin.previous_transaction[j]);
-        }
+         printf("  Previous Transaction:  %s\n",coin.previous_transaction); // Print the coin object ID if needed
+        // for (size_t j = 0; j < sizeof(coin.previous_transaction); j++) {
+        //     printf("%02X ", coin.previous_transaction[j]);
+        // }
 
        
     }
