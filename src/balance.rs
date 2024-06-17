@@ -1,3 +1,4 @@
+use super::SuiClientSingleton;
 use std::str::FromStr;
 
 use anyhow::{Ok, Result};
@@ -36,7 +37,8 @@ pub async fn _get_coins() -> Result<Page<Coin, ObjectID>> {
 }
 
 pub async fn _get_balance() -> Result<Balance> {
-    let sui_client = SuiClientBuilder::default().build_testnet().await?;
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    // let sui_client = SuiClientBuilder::default().build_testnet().await?;
     let address =
         SuiAddress::from_str("0x0cc4b15265e0a342a2822377258e3750ecea621172e580395674790b33844a6b")
             .unwrap();
@@ -49,7 +51,8 @@ pub async fn _get_balance() -> Result<Balance> {
     Ok(balance)
 }
 pub async fn _get_all_balances(address: &str) -> Result<Vec<Balance>> {
-    let sui_client = SuiClientBuilder::default().build_testnet().await?;
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    // let sui_client = SuiClientBuilder::default().build_testnet().await?;
     let address = SuiAddress::from_str(address).unwrap();
     // Balance
     // Total balance

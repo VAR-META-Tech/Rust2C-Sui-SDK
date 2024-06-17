@@ -98,7 +98,6 @@ pub async fn request_tokens_from_faucet(
             "recipient": &address_str
         }
     }];
-
     // make the request to the faucet JSON RPC API for coin
     let client = Client::new();
     let resp = client
@@ -133,7 +132,7 @@ pub async fn request_tokens_from_faucet(
     // wait for the faucet to finish the batch of token requests
     loop {
         let resp = client
-            .get("https://faucet.devnet.sui.io/v1/status")
+            .get("https://faucet.devnet.sui.io/status")
             .header("Content-Type", "application/json")
             .json(&json_body)
             .send()

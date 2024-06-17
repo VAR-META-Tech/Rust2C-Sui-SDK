@@ -423,12 +423,14 @@ pub extern "C" fn get_balance_sync(address: *const c_char) -> CBalance {
         CStr::from_ptr(address)
     };
     let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let balance = runtime.block_on(get_balance(address_str)).unwrap_or_else(|_| Balance {
-        coin_type: "".to_string(),
-        coin_object_count: 0,
-        total_balance: 0,
-        locked_balance: HashMap::new(),
-    });
+    let balance = runtime
+        .block_on(get_balance(address_str))
+        .unwrap_or_else(|_| Balance {
+            coin_type: "".to_string(),
+            coin_object_count: 0,
+            total_balance: 0,
+            locked_balance: HashMap::new(),
+        });
     let total_balance_bytes = balance.total_balance.to_le_bytes();
     CBalance {
         coin_type: CString::new(balance.coin_type.clone()).unwrap().into_raw(),
@@ -548,11 +550,13 @@ impl WrappedCoin {
             coin_type: CString::new(self.inner.coin_type.clone())
                 .unwrap()
                 .into_raw(),
-            coin_object_id:string_to_c_char(Some(self.inner.coin_object_id.to_string())),
+            coin_object_id: string_to_c_char(Some(self.inner.coin_object_id.to_string())),
             version: self.inner.version.value(),
             digest: string_to_c_char(Some(self.inner.digest.base58_encode())),
             balance: self.inner.balance,
-            previous_transaction: string_to_c_char(Some(self.inner.previous_transaction.base58_encode())),
+            previous_transaction: string_to_c_char(Some(
+                self.inner.previous_transaction.base58_encode(),
+            )),
         }
     }
 }
@@ -609,11 +613,13 @@ pub extern "C" fn get_coins_sync(address: *const c_char) -> CCoinArray {
     };
     let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let coins = runtime.block_on(get_coins(address_str)).unwrap_or_else(|_| Page {
-        data: Vec::new(),
-        next_cursor: None,
-        has_next_page: false,
-    });
+    let coins = runtime
+        .block_on(get_coins(address_str))
+        .unwrap_or_else(|_| Page {
+            data: Vec::new(),
+            next_cursor: None,
+            has_next_page: false,
+        });
 
     let wrapped_coins: Vec<WrappedCoin> = coins
         .data

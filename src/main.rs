@@ -1,32 +1,83 @@
-// Copyright (c) Mysten Labs, Inc.
-// SPDX-License-Identifier: Apache-2.0
+use once_cell::sync::OnceCell;
+use std::sync::Mutex;
+use sui_sdk::{error::Error, SuiClient, SuiClientBuilder};
 
-use std::fs;
-use std::path::PathBuf;
-use std::str::FromStr;
+pub enum SuiEnvironment {
+    Testnet,
+    Devnet,
+}
 
-use fastcrypto::hash::HashFunction;
-use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
-use rand::Error;
+struct SuiClientSingleton {
+    client: Mutex<Option<SuiClient>>,
+    environment: Mutex<Option<SuiEnvironment>>,
+}
 
-use sui_keys::key_derive::generate_new_key;
-use sui_sdk::SuiClientBuilder;
-use tempfile::TempDir;
+impl SuiClientSingleton {
+    fn instance() -> &'static SuiClientSingleton {
+        static INSTANCE: OnceCell<SuiClientSingleton> = OnceCell::new();
+        INSTANCE.get_or_init(|| SuiClientSingleton {
+            client: Mutex::new(None),
+            environment: Mutex::new(None),
+        })
+    }
 
-use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, InMemKeystore, Keystore};
-use sui_types::crypto::{DefaultHash, SignatureScheme, SuiKeyPair, SuiSignatureInner};
-use sui_types::{
-    base_types::{SuiAddress, SUI_ADDRESS_LENGTH},
-    crypto::Ed25519SuiSignature,
-};
-mod balance;
-mod wallet;
+    async fn initialize(&self, environment: SuiEnvironment) -> Result<(), Error> {
+        let mut env_guard = self.environment.lock().unwrap();
+        if env_guard.is_some() {
+            return Err(Error::DataError(
+                "Environment already initialized".to_string(),
+            ));
+        }
+        *env_guard = Some(environment);
+        Ok(())
+    }
+
+    async fn get_or_init(&self) -> Result<SuiClient, Error> {
+        let env_guard = self.environment.lock().unwrap();
+        let environment = match &*env_guard {
+            Some(env) => env.clone(),
+            None => return Err(Error::DataError("Environment not initialized".to_string())),
+        };
+
+        let mut client_guard = self.client.lock().unwrap();
+        if let Some(client) = &*client_guard {
+            Ok(client.clone())
+        } else {
+            let client = match environment {
+                SuiEnvironment::Testnet => SuiClientBuilder::default().build_testnet().await?,
+                SuiEnvironment::Devnet => SuiClientBuilder::default().build_devnet().await?,
+            };
+            *client_guard = Some(client.clone());
+            Ok(client)
+        }
+    }
+}
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
-    balance::_get_all_balances(
-        "0x0cc4b15265e0a342a2822377258e3750ecea621172e580395674790b33844a6b",
-    )
-    .await?;
-    Ok(())
+async fn main() {
+    let sui_client_singleton = SuiClientSingleton::instance();
+
+    // Initialize environment only once
+    match sui_client_singleton
+        .initialize(SuiEnvironment::Testnet)
+        .await
+    {
+        Ok(()) => println!("Environment initialized to Testnet."),
+        Err(e) => eprintln!("Failed to initialize environment: {:?}", e),
+    }
+
+    // Try to re-initialize with a different environment (should fail)
+    match sui_client_singleton
+        .initialize(SuiEnvironment::Devnet)
+        .await
+    {
+        Ok(()) => println!("Environment re-initialized to Devnet."),
+        Err(e) => eprintln!("Failed to re-initialize environment: {:?}", e),
+    }
+
+    // Get or initialize the SuiClient
+    match sui_client_singleton.get_or_init().await {
+        Ok(client) => println!("SuiClient initialized successfully!"),
+        Err(e) => eprintln!("Failed to initialize SuiClient: {:?}", e),
+    }
 }
