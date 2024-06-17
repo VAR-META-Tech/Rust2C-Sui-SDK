@@ -4,21 +4,21 @@
 
 int main()
 {
+    // Get balances
+    BalanceArray balanceArray = get_balances("0x0cc4b15265e0a342a2822377258e3750ecea621172e580395674790b33844a6b");
 
-    WalletList wallet_list = get_wallets();
-
-    for (size_t i = 0; i < wallet_list.length; ++i)
+    // Iterate and print balances
+    for (size_t i = 0; i < balanceArray.length; ++i)
     {
-        Wallet wallet = wallet_list.wallets[i];
-        printf("Wallet %zu:\n", i + 1);
-        printf("  Address: %s\n", wallet.address);
-        printf("  Mnemonic: %s\n", wallet.mnemonic);
-        printf("  Public Base64 Key: %s\n", wallet.public_base64_key);
-        printf("  Private Key: %s\n", wallet.private_key);
-        printf("  Key Scheme: %s\n", wallet.key_scheme);
+        Balance balance = balanceArray.balances[i];
+        printf("Coin Type: %s\n", balance.coin_type);
+        printf("Coin Object Count: %zu\n", balance.coin_object_count);
+        printf("Total Balance Part 1: %llu\n", balance.total_balance[0]);
+        printf("Total Balance Part 2: %llu\n", balance.total_balance[1]);
     }
 
-    free_wallet_list(wallet_list);
+    // Free allocated memory
+    free_balance_array(balanceArray);
 
     return 0;
 }

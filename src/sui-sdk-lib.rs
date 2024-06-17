@@ -9,6 +9,7 @@ use sui_sdk::{SuiClient, SuiClientBuilder};
 use anyhow::Result;
 use tokio::runtime; // Using Tokio as the async runtime
 
+mod balance;
 mod coin_read_api;
 mod sui_client;
 mod utils;
@@ -23,8 +24,8 @@ use wallet::Wallet;
 use std::collections::HashMap;
 mod event_api;
 use event_api::_event_api;
-use sui_client::{connect_devnet, connect_localnet, connect_testnet};
 use once_cell::sync::OnceCell;
+use sui_client::{connect_devnet, connect_localnet, connect_testnet};
 use sui_json_rpc_types::Balance;
 use tokio::sync::Mutex;
 
@@ -391,6 +392,13 @@ pub struct CBalance {
     total_balance: [u64; 2],
 }
 
+// C-compatible vector of balances
+#[repr(C)]
+pub struct CBalanceArray {
+    balances: *const CBalance,
+    length: usize,
+}
+
 // impl Balance {
 //     fn to_c_balance(&self) -> CBalance {
 //         let total_balance_bytes = self.total_balance.to_le_bytes();
@@ -435,12 +443,6 @@ pub extern "C" fn free_balance(balance: CBalance) {
     }
 }
 
-// C-compatible vector of balances
-#[repr(C)]
-pub struct CBalanceArray {
-    balances: *const CBalance,
-    length: usize,
-}
 /// Wrapper for the Balance struct to implement methods
 pub struct BalanceWrapper(Balance);
 
@@ -500,6 +502,20 @@ pub extern "C" fn get_all_balances_sync() -> CBalanceArray {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let balances = runtime
         .block_on(get_all_balances())
+        .unwrap_or_else(|_| Vec::new());
+    to_c_balance_array(balances)
+}
+
+#[no_mangle]
+pub extern "C" fn get_balances(address: *const c_char) -> CBalanceArray {
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let balances = runtime
+        .block_on(balance::_get_all_balances(address_str))
         .unwrap_or_else(|_| Vec::new());
     to_c_balance_array(balances)
 }

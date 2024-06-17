@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include "sui_client.h"
 #include "sui_wallet.h"
+#include "sui_balance.h"
 #ifdef __cplusplus
 extern "C"
 {

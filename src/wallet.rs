@@ -79,7 +79,7 @@ impl Wallet {
             None => ptr::null_mut(),
         }
     }
-    fn show(&self) {
+    pub fn show(&self) {
         let address = unsafe { CStr::from_ptr(self.address) }
             .to_str()
             .unwrap_or("Not set");
@@ -184,6 +184,7 @@ pub fn import_from_mnemonic(mnemonic: &str) -> Result<(), anyhow::Error> {
 }
 
 pub fn import_from_private_key(key_base64: &str) -> Result<(), anyhow::Error> {
+    println!("Private Key: {}", key_base64);
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let key_pair = SuiKeyPair::decode_base64(key_base64).map_err(|_| anyhow!("Invalid base64"))?;
@@ -203,6 +204,10 @@ pub fn get_wallet_from_address(address: &str) -> Result<Wallet, anyhow::Error> {
         SuiKeyPair::Secp256k1(_) => SignatureScheme::Secp256k1,
         SuiKeyPair::Secp256r1(_) => SignatureScheme::Secp256r1,
     };
+    println!("address: {}", address.to_string());
+    println!("pub: {}", key.public().encode_base64());
+    println!("pri: {}", key.encode_base64());
+    println!("pri: {}", scheme.to_string());
 
     // Print the scheme
     Ok(Wallet::new(
