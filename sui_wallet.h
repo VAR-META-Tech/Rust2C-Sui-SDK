@@ -37,7 +37,7 @@ extern "C"
     extern Wallet *get_wallet_from_address(const char *address);
     extern void free_wallet(Wallet *wallet);
     extern void import_from_private_key(const char *key_base64);
-    extern void import_from_mnemonic(const char *mnemonic);
+    extern char *import_from_mnemonic(const char *mnemonic);
 
 #ifdef __cplusplus
 }

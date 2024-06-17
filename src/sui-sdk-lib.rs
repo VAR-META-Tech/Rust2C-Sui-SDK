@@ -242,13 +242,14 @@ pub extern "C" fn import_from_private_key(key_base64: *const c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char) {
+pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char) -> *mut c_char {
     let c_str = unsafe {
         assert!(!mnemonic.is_null());
         CStr::from_ptr(mnemonic)
     };
     let mnemonic_str = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let _ = wallet::import_from_mnemonic(mnemonic_str);
+    let _address = wallet::import_from_mnemonic(mnemonic_str).unwrap();
+    CString::new(_address).unwrap().into_raw()
 }
 
 // Struct to hold C-compatible string array

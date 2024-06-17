@@ -172,7 +172,7 @@ pub fn generate_and_add_key() -> Result<Wallet, anyhow::Error> {
     ))
 }
 
-pub fn import_from_mnemonic(mnemonic: &str) -> Result<(), anyhow::Error> {
+pub fn import_from_mnemonic(mnemonic: &str) -> Result<String, anyhow::Error> {
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
 
@@ -180,7 +180,7 @@ pub fn import_from_mnemonic(mnemonic: &str) -> Result<(), anyhow::Error> {
         .import_from_mnemonic(mnemonic, SignatureScheme::ED25519, None)
         .unwrap();
 
-    Ok(())
+    Ok(_sui_addresss.to_string())
 }
 
 pub fn import_from_private_key(key_base64: &str) -> Result<(), anyhow::Error> {
