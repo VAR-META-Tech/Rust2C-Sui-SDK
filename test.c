@@ -4,6 +4,16 @@
 
 int main()
 {
+    // // code here
+    // int buildTestnetResult = buildTestnet();
+    // if (buildTestnetResult == 0)
+    // {
+    //     printf("buildTestnet succeeded.\n");
+    // }
+    // else
+    // {
+    //     printf("buildTestnet failed.\n");
+    // }
     // Get balances
     BalanceArray balanceArray = get_balances("0x0cc4b15265e0a342a2822377258e3750ecea621172e580395674790b33844a6b");
 

@@ -1,7 +1,9 @@
+use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
-use std::sync::Mutex;
-use sui_sdk::{error::Error, SuiClient, SuiClientBuilder};
+use sui_sdk::{SuiClient, SuiClientBuilder};
+use tokio::sync::Mutex;
 
+#[derive(Clone)]
 pub enum SuiEnvironment {
     Testnet,
     Devnet,
@@ -21,25 +23,26 @@ impl SuiClientSingleton {
         })
     }
 
-    async fn initialize(&self, environment: SuiEnvironment) -> Result<(), Error> {
-        let mut env_guard = self.environment.lock().unwrap();
+    async fn initialize(&self, environment: SuiEnvironment) -> Result<()> {
+        let mut env_guard = self.environment.lock().await;
         if env_guard.is_some() {
-            return Err(Error::DataError(
-                "Environment already initialized".to_string(),
-            ));
+            return Err(anyhow!("Environment already initialized"));
         }
         *env_guard = Some(environment);
         Ok(())
     }
 
-    async fn get_or_init(&self) -> Result<SuiClient, Error> {
-        let env_guard = self.environment.lock().unwrap();
-        let environment = match &*env_guard {
-            Some(env) => env.clone(),
-            None => return Err(Error::DataError("Environment not initialized".to_string())),
+    async fn get_or_init(&self) -> Result<SuiClient> {
+        let mut env_guard = self.environment.lock().await;
+        let environment = if let Some(env) = &*env_guard {
+            env.clone()
+        } else {
+            let default_env = SuiEnvironment::Devnet;
+            *env_guard = Some(default_env.clone());
+            default_env
         };
 
-        let mut client_guard = self.client.lock().unwrap();
+        let mut client_guard = self.client.lock().await;
         if let Some(client) = &*client_guard {
             Ok(client.clone())
         } else {

@@ -51,7 +51,11 @@ pub async fn _get_balance() -> Result<Balance> {
     Ok(balance)
 }
 pub async fn _get_all_balances(address: &str) -> Result<Vec<Balance>> {
+    println!(" ***  _get_all_balances *** ");
+
     let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    println!(" ***  sui_client done *** ");
+
     // let sui_client = SuiClientBuilder::default().build_testnet().await?;
     let address = SuiAddress::from_str(address).unwrap();
     // Balance

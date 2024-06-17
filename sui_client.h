@@ -33,6 +33,9 @@ extern "C"
     ResultCStringArray available_rpc_methods();
     ResultCStringArray available_subscriptions();
 
+    int buildDevnet(void);
+    int buildTestnet(void);
+
 #ifdef __cplusplus
 }
 #endif

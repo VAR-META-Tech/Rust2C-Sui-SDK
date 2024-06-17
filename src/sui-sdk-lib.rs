@@ -7,7 +7,7 @@ use sui_client::{
 use sui_json_rpc_types::Page;
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use tokio::runtime; // Using Tokio as the async runtime
 
 mod balance;
@@ -30,8 +30,15 @@ use sui_client::{connect_devnet, connect_localnet, connect_testnet};
 use sui_json_rpc_types::Balance;
 use tokio::sync::Mutex;
 
+#[derive(Clone)]
+pub enum SuiEnvironment {
+    Testnet,
+    Devnet,
+}
+
 struct SuiClientSingleton {
     client: Mutex<Option<SuiClient>>,
+    environment: Mutex<Option<SuiEnvironment>>,
 }
 
 impl SuiClientSingleton {
@@ -39,15 +46,37 @@ impl SuiClientSingleton {
         static INSTANCE: OnceCell<SuiClientSingleton> = OnceCell::new();
         INSTANCE.get_or_init(|| SuiClientSingleton {
             client: Mutex::new(None),
+            environment: Mutex::new(None),
         })
     }
 
-    async fn get_or_init(&self) -> Result<SuiClient, sui_sdk::error::Error> {
+    async fn initialize(&self, environment: SuiEnvironment) -> Result<()> {
+        let mut env_guard = self.environment.lock().await;
+        if env_guard.is_some() {
+            return Err(anyhow!("Environment already initialized"));
+        }
+        *env_guard = Some(environment);
+        Ok(())
+    }
+
+    async fn get_or_init(&self) -> Result<SuiClient> {
+        let mut env_guard = self.environment.lock().await;
+        let environment = if let Some(env) = &*env_guard {
+            env.clone()
+        } else {
+            let default_env = SuiEnvironment::Devnet;
+            *env_guard = Some(default_env.clone());
+            default_env
+        };
+
         let mut client_guard = self.client.lock().await;
         if let Some(client) = &*client_guard {
             Ok(client.clone())
         } else {
-            let client = SuiClientBuilder::default().build_testnet().await?;
+            let client = match environment {
+                SuiEnvironment::Testnet => SuiClientBuilder::default().build_testnet().await?,
+                SuiEnvironment::Devnet => SuiClientBuilder::default().build_devnet().await?,
+            };
             *client_guard = Some(client.clone());
             Ok(client)
         }
@@ -83,6 +112,61 @@ pub extern "C" fn test() -> i32 {
     })
 }
 
+pub async fn _buildTestnet() -> Result<()> {
+    let sui_client_singleton = SuiClientSingleton::instance();
+
+    // Initialize environment only once
+    match sui_client_singleton
+        .initialize(SuiEnvironment::Testnet)
+        .await
+    {
+        Ok(()) => println!("Environment initialized to Testnet."),
+        Err(e) => eprintln!("Failed to initialize environment: {:?}", e),
+    }
+
+    Ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn buildTestnet() -> i32 {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _buildTestnet().await {
+            Ok(_) => 0,  // Return 0 to indicate success.
+            Err(_) => 1, // Return 1 or other error codes to indicate an error.
+        }
+    })
+}
+
+pub async fn _buildDevnet() -> Result<()> {
+    let sui_client_singleton = SuiClientSingleton::instance();
+
+    // Initialize environment only once
+    match sui_client_singleton
+        .initialize(SuiEnvironment::Devnet)
+        .await
+    {
+        Ok(()) => println!("Environment initialized to Devnet."),
+        Err(e) => eprintln!("Failed to initialize environment: {:?}", e),
+    }
+
+    Ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn buildDevnet() -> i32 {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _buildDevnet().await {
+            Ok(_) => 0,  // Return 0 to indicate success.
+            Err(_) => 1, // Return 1 or other error codes to indicate an error.
+        }
+    })
+}
 //Wallet
 
 #[repr(C)]
