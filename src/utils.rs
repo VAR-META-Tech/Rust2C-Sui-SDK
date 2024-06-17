@@ -36,9 +36,9 @@ struct FaucetResponse {
     error: Option<String>,
 }
 
-// const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
+const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
 
-pub const SUI_FAUCET: &str = "https://faucet.testnet.sui.io/v1/gas"; // testnet faucet
+//pub const SUI_FAUCET: &str = "https://faucet.testnet.sui.io/v1/gas"; // testnet faucet
 
 // if you use the sui-test-validator and use the local network; if it does not work, try with port 5003.
 // const SUI_FAUCET: &str = "http://127.0.0.1:9123/gas";
@@ -76,8 +76,8 @@ pub async fn setup_for_write() -> Result<(SuiClient, SuiAddress, SuiAddress), an
 /// If there is no SUI owned by the active address, then it will request
 /// SUI from the faucet.
 pub async fn setup_for_read() -> Result<(SuiClient, SuiAddress), anyhow::Error> {
-    let client = SuiClientBuilder::default().build_testnet().await?;
-    println!("Sui testnet version is: {}", client.api_version());
+    let client = SuiClientBuilder::default().build_devnet().await?;
+    println!("Sui devnet version is: {}", client.api_version());
     let mut wallet = retrieve_wallet()?;
     assert!(wallet.get_addresses().len() >= 2);
     let active_address = wallet.active_address()?;
@@ -133,7 +133,7 @@ pub async fn request_tokens_from_faucet(
     // wait for the faucet to finish the batch of token requests
     loop {
         let resp = client
-            .get("https://faucet.testnet.sui.io/v1/status")
+            .get("https://faucet.devnet.sui.io/v1/status")
             .header("Content-Type", "application/json")
             .json(&json_body)
             .send()

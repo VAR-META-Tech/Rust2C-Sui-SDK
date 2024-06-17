@@ -52,12 +52,12 @@ extern "C"
     // Define the C struct for Coin
     typedef struct
     {
-        const char *coin_type;
-        uint8_t coin_object_id[32];
+        char * coin_type;
+        char * coin_object_id;
         uint64_t version;
-        uint8_t digest[32];
+        char * digest;
         uint64_t balance;
-        uint8_t previous_transaction[32];
+        char * previous_transaction;
     } CCoin;
 
     // Define the C struct for an array of CCoin
@@ -76,14 +76,14 @@ extern "C"
     // Read Coin function
     uint64_t get_total_supply_sync();
 
-    Balance get_balance_sync();
+    Balance get_balance_sync(const char *address);
     void free_balance(Balance balance);
 
     // Declare the Rust functions
-    extern BalanceArray get_all_balances_sync();
+    extern BalanceArray get_all_balances_sync(const char *address);
     extern void free_balance_array(BalanceArray balance_array);
 
-    extern CCoinArray get_coins_sync();
+    extern CCoinArray get_coins_sync(const char *address);
     extern void free_coin_array(CCoinArray coins);
 
     // Wallet
