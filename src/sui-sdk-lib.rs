@@ -16,10 +16,10 @@ mod sui_client;
 mod utils;
 mod wallet;
 use coin_read_api::_coin_read_api;
-use coin_read_api::get_all_balances;
-use coin_read_api::get_balance;
-use coin_read_api::get_coins;
-use coin_read_api::get_total_supply;
+use balance::get_all_balances;
+use balance::get_balance;
+use balance::get_coins;
+use balance::get_total_supply;
 use wallet::Wallet;
 
 use std::collections::HashMap;
