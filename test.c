@@ -33,7 +33,7 @@ int main()
     Wallet *wallet = generate_wallet();
     printf("address: %s\n", wallet->address);
     printf("mnemonic: %s\n", wallet->mnemonic);
-    char *address = import_from_mnemonic("laundry blade senior polar hand dismiss plate cycle bar appear kitten bless");
+    char *address = import_from_mnemonic(wallet->mnemonic);
 
     printf("address: %s\n", address);
     return 0;
