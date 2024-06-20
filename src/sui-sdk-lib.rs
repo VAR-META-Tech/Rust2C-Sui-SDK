@@ -15,6 +15,8 @@ mod coin_read_api;
 mod sui_client;
 mod utils;
 mod wallet;
+mod transactions;
+use transactions::ProgrammableTransaction;
 use coin_read_api::_coin_read_api;
 use balance::get_all_balances;
 use balance::get_balance;
@@ -712,4 +714,21 @@ pub extern "C" fn get_coins_sync(address: *const c_char) -> CCoinArray {
         .map(|inner| WrappedCoin { inner })
         .collect();
     to_c_coin_array(wrapped_coins)
+}
+
+
+#[no_mangle]
+pub extern "C" fn programmable_transaction(sender_address: *const c_char, recipient_address: *const c_char) -> *const c_char {
+    let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
+    let recipient = unsafe { CStr::from_ptr(recipient_address).to_string_lossy().to_string() };
+
+    // Here we run the async block synchronously for simplicity
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async move {
+        ProgrammableTransaction(&sender, &recipient).await
+    });
+
+    match result {
+        Ok(_) => CString::new("Transaction completed successfully").unwrap().into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
 }
