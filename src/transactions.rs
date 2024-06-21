@@ -40,16 +40,16 @@ struct FaucetResponse {
 // for the recipient address increases.
 
 
-pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str) -> Result<(), anyhow::Error> {
+pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str , amount:u64) -> Result<(), anyhow::Error> {
     // 1) get the Sui client, the sender and recipient that we will use
     // for the transaction, and find the coin we use as gas
 
     let sender = SuiAddress::from_str(senderaddress)?;
     let recipient = SuiAddress::from_str(recipientaddress)?;
-    let sui = SuiClientBuilder::default().build_testnet().await?;
+    let sui = SuiClientBuilder::default().build_devnet().await?;
     let _coin = fetch_coin(&sui,&sender).await?;
     if _coin.is_none() {
-        request_tokens_from_faucet(sender, &sui).await?;
+        request_tokens_from_faucet(senderaddress).await?;
     }
     // we need to find the coin we will use as gas
     let coins = sui
@@ -63,7 +63,7 @@ pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str)
 
     // 2) split coin
     // the amount we want in the new coin, 1000 MIST
-    let split_coint_amount = ptb.pure(1000u64)?; // note that we need to specify the u64 type
+    let split_coint_amount = ptb.pure(amount)?; // note that we need to specify the u64 type
     ptb.command(Command::SplitCoins(
         Argument::GasCoin,
         vec![split_coint_amount],
@@ -123,10 +123,10 @@ pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str)
 /// Request tokens from the Faucet for the given address
 #[allow(unused_assignments)]
 pub async fn request_tokens_from_faucet(
-    address: SuiAddress,
-    sui_client: &SuiClient,
+    address_str: &str,
 ) -> Result<(), anyhow::Error> {
-    let address_str = address.to_string();
+    let sui_client = SuiClientBuilder::default().build_devnet().await?;
+    let address = SuiAddress::from_str(address_str)?;
     let json_body = json![{
         "FixedAmountRequest": {
             "recipient": &address_str

@@ -68,7 +68,7 @@ pub async fn _get_all_balances(address: &str) -> Result<Vec<Balance>> {
     Ok(total_balance)
 }
 pub async fn get_coins(address: &str) -> Result<Page<Coin, ObjectID>> {
-    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
     let active_address: SuiAddress = SuiAddress::from_str(address)?;
     println!("Read Coin From address:{}", active_address.to_string());
 
@@ -107,7 +107,7 @@ pub async fn get_total_supply() -> Result<Supply> {
     Ok(total_supply)
 }
 pub async fn get_balance(address: &str) -> Result<Balance> {
-    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
     let active_address: SuiAddress = SuiAddress::from_str(address)?;
       // Balance
     // Returns the balance for the specified coin type for this address,
@@ -121,7 +121,7 @@ pub async fn get_balance(address: &str) -> Result<Balance> {
     Ok(balance)
 }
 pub async fn get_all_balances(address: &str) -> Result<Vec<Balance>> {
-    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let sui = SuiClientSingleton::instance().get_or_init().await?;
     let active_address: SuiAddress = SuiAddress::from_str(address)?;
       // Balance
    // Total balance
