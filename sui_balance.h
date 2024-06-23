@@ -9,7 +9,7 @@
 extern "C"
 {
 #endif
-
+    // Define the Balance struct
     typedef struct
     {
         char *coin_type;
@@ -24,9 +24,33 @@ extern "C"
         size_t length;
     } BalanceArray;
 
-    extern BalanceArray get_balances(const char *address);
-    extern void free_balance_array(BalanceArray balance_array);
+    // Define the C struct for Coin
+    typedef struct
+    {
+        char * coin_type;
+        char * coin_object_id;
+        uint64_t version;
+        char * digest;
+        uint64_t balance;
+        char * previous_transaction;
+    } CCoin;
 
+    // Define the C struct for an array of CCoin
+    typedef struct
+    {
+        CCoin *coins;
+        size_t length;
+    } CCoinArray;
+    // Declare the C functions 
+    extern BalanceArray get_balances(const char *address);
+    extern BalanceArray get_all_balances_sync(const char *address);
+    extern void free_balance_array(BalanceArray balance_array);
+    Balance get_balance_sync(const char *address);
+    void free_balance(Balance balance);
+    uint64_t get_total_supply_sync();
+    extern CCoinArray get_coins_sync(const char *address);
+    extern void free_coin_array(CCoinArray coins);
+    
 #ifdef __cplusplus
 }
 #endif

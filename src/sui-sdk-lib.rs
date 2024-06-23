@@ -15,11 +15,14 @@ mod coin_read_api;
 mod sui_client;
 mod utils;
 mod wallet;
+mod transactions;
+use transactions::ProgrammableTransaction;
+use transactions::request_tokens_from_faucet;
 use coin_read_api::_coin_read_api;
-use coin_read_api::get_all_balances;
-use coin_read_api::get_balance;
-use coin_read_api::get_coins;
-use coin_read_api::get_total_supply;
+use balance::get_all_balances;
+use balance::get_balance;
+use balance::get_coins;
+use balance::get_total_supply;
 use wallet::Wallet;
 
 use std::collections::HashMap;
@@ -726,4 +729,37 @@ pub extern "C" fn get_coins_sync(address: *const c_char) -> CCoinArray {
         .map(|inner| WrappedCoin { inner })
         .collect();
     to_c_coin_array(wrapped_coins)
+}
+
+
+#[no_mangle]
+pub extern "C" fn programmable_transaction(sender_address: *const c_char, recipient_address: *const c_char,amount: u64) -> *const c_char {
+    let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
+    let recipient = unsafe { CStr::from_ptr(recipient_address).to_string_lossy().to_string() };
+
+    // Here we run the async block synchronously for simplicity
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async move {
+        ProgrammableTransaction(&sender, &recipient,amount).await
+    });
+
+    match result {
+        Ok(_) => CString::new("Transaction completed successfully").unwrap().into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
+}
+
+
+#[no_mangle]
+pub extern "C" fn request_tokens_from_faucet_(address_str: *const c_char) -> *const c_char {
+    let address= unsafe { CStr::from_ptr(address_str).to_string_lossy().to_string() };
+
+    // Run the async function synchronously inside the Rust environment
+    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
+        request_tokens_from_faucet(&address).await
+    });
+
+    match result {
+        Ok(_) => CString::new("Request successful").unwrap().into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
 }
