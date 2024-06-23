@@ -209,8 +209,22 @@ pub extern "C" fn free_wallet(wallet: *mut Wallet) {
 }
 
 #[no_mangle]
-pub extern "C" fn generate_wallet() -> *mut Wallet {
-    let wallet = wallet::generate_new().unwrap();
+pub extern "C" fn generate_wallet(
+    key_scheme: *const c_char,
+    word_length: *const c_char,
+) -> *mut Wallet {
+    let c_key_scheme = unsafe {
+        assert!(!key_scheme.is_null());
+        CStr::from_ptr(key_scheme)
+    };
+    let key_scheme_str = c_key_scheme.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_word_length = unsafe {
+        assert!(!word_length.is_null());
+        CStr::from_ptr(word_length)
+    };
+    let word_length_str = c_word_length.to_str().unwrap_or("Invalid UTF-8");
+    let wallet = wallet::generate_new(key_scheme_str, word_length_str).unwrap();
     Box::into_raw(Box::new(wallet))
 }
 

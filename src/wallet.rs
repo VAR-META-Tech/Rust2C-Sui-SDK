@@ -219,7 +219,27 @@ pub fn get_wallet_from_address(address: &str) -> Result<Wallet, anyhow::Error> {
     ))
 }
 
-pub fn generate_new() -> Result<Wallet, anyhow::Error> {
-    let (address, kp, scheme, phrase) = generate_new_key(SignatureScheme::ED25519, None, None)?;
+pub fn generate_new(key_scheme: &str, word_length: &str) -> Result<Wallet, anyhow::Error> {
+    let scheme = match key_scheme.to_lowercase().as_str() {
+        "ed25519" => Ok(SignatureScheme::ED25519),
+        "secp256k1" => Ok(SignatureScheme::Secp256k1),
+        "secp256r1" => Ok(SignatureScheme::Secp256r1),
+        "bls12381" => Ok(SignatureScheme::BLS12381),
+        "multisig" => Ok(SignatureScheme::MultiSig),
+        "zkloginauthenticator" => Ok(SignatureScheme::ZkLoginAuthenticator),
+        _ => Ok(SignatureScheme::ED25519),
+    }
+    .unwrap();
+    let _word_length = match word_length.to_lowercase().as_str() {
+        "word12" => Ok("word12"),
+        "word15" => Ok("word15"),
+        "word18" => Ok("word18"),
+        "word21" => Ok("word21"),
+        "word24" => Ok("word24"),
+        _ => Ok("word12"),
+    }
+    .unwrap();
+    let (address, kp, scheme, phrase) =
+        generate_new_key(scheme, None, Some(_word_length.to_string()))?;
     Ok(Wallet::from_generate_result(address, kp, scheme, phrase))
 }
