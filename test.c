@@ -30,7 +30,7 @@ int main()
     // // Free allocated memory
     // free_balance_array(balanceArray);
 
-    Wallet wallet = generate_wallet("ED25519", "word12");
+    Wallet *wallet = generate_wallet("ED25519", "word12");
     printf("address: %s\n", wallet->address);
     printf("mnemonic: %s\n", wallet->mnemonic);
     printf("Scheme: %s\n", wallet->key_scheme);
