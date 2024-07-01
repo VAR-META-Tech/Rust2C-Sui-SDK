@@ -1,8 +1,8 @@
-use std::ffi::{c_char, CString};
-use sui_sdk::SuiClientBuilder;
 use super::SuiClientSingleton;
 use anyhow::{Ok, Result};
 use futures::{future, stream::StreamExt};
+use std::ffi::{c_char, CString};
+use sui_sdk::SuiClientBuilder;
 use sui_sdk::{
     error::SuiRpcResult,
     types::base_types::{ObjectID, SuiAddress},

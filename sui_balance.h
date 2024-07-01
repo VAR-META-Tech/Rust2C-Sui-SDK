@@ -41,7 +41,7 @@ extern "C"
         CCoin *coins;
         size_t length;
     } CCoinArray;
-    // Declare the C functions 
+    // Declare the C functions
     extern BalanceArray get_balances(const char *address);
     extern BalanceArray get_all_balances_sync(const char *address);
     extern void free_balance_array(BalanceArray balance_array);
@@ -50,9 +50,10 @@ extern "C"
     uint64_t get_total_supply_sync();
     extern CCoinArray get_coins_sync(const char *address);
     extern void free_coin_array(CCoinArray coins);
-    
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif // SUI_BALANCE_H
+ 
