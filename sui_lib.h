@@ -9,6 +9,7 @@
 #include "sui_wallet.h"
 #include "sui_balance.h"
 #include "sui_transaction.h"
+#include "sui_multisig.h"
 #ifdef __cplusplus
 extern "C"
 {

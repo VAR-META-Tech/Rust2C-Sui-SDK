@@ -77,11 +77,12 @@ pub async fn get_or_create_multisig_address(
     )
 }
 
-pub async fn create_transaction(
-    multisig_addr: SuiAddress,
+pub async fn create_sui_transaction(
+    multisig_addr: &str,
     recipient_address: &str,
     amount: u64,
 ) -> Result<TransactionData, anyhow::Error> {
+    let multisig_addr = SuiAddress::from_str(multisig_addr)?;
     let sui_client = SuiClientBuilder::default().build_devnet().await?;
     let recipient = SuiAddress::from_str(recipient_address)?;
 
@@ -119,7 +120,7 @@ pub async fn create_transaction(
     ))
 }
 
-pub async fn sign_and_execute_transaction(
+pub async fn _sign_and_execute_transaction(
     tx_data: Vec<u8>,
     signers_addresses: Vec<&str>,
     multisig_pk: Vec<u8>,
@@ -129,22 +130,16 @@ pub async fn sign_and_execute_transaction(
     let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let tx_data: TransactionData = bcs::from_bytes(&tx_data)?;
     let multisig_pk: MultiSigPublicKey = bcs::from_bytes(&multisig_pk)?;
-
     let intent_msg = IntentMessage::new(Intent::sui_transaction(), tx_data.clone());
-    let signers = vec![
-        keystore.get_key(&SuiAddress::from_str(
-            "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd",
-        )?)?,
-        keystore.get_key(&SuiAddress::from_str(
-            "0x2691bf90af73ce452f71ef081c1d8f00a9d8a3506101c5def54f6bed8c1be733",
-        )?)?,
-    ];
-    let mut signatures = Vec::with_capacity(signers.len());
-    for signer in signers {
+    let mut signatures = Vec::with_capacity(signers_addresses.len());
+    for address in signers_addresses {
         signatures.push(
-            GenericSignature::from(Signature::new_secure(&intent_msg, signer))
-                .to_compressed()
-                .unwrap(),
+            GenericSignature::from(Signature::new_secure(
+                &intent_msg,
+                keystore.get_key(&SuiAddress::from_str(address)?)?,
+            ))
+            .to_compressed()
+            .unwrap(),
         );
     }
 
@@ -175,16 +170,21 @@ pub async fn multisig_transaction() -> Result<(), anyhow::Error> {
     )
     .await?;
     let multisig_addr = SuiAddress::from(&multisig_pk);
-    let tx_data = create_transaction(
-        multisig_addr,
+    let bytes = bcs::to_bytes(&multisig_pk)?;
+    println!("Vec<u8>: {:?}", bytes);
+    let tx_data = create_sui_transaction(
+        multisig_addr.to_string().as_str(),
         "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75",
         540000000,
     )
     .await?;
 
-    let _ = sign_and_execute_transaction(
+    let _ = _sign_and_execute_transaction(
         bcs::to_bytes(&tx_data)?,
-        vec![],
+        vec![
+            "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd",
+            "0x2691bf90af73ce452f71ef081c1d8f00a9d8a3506101c5def54f6bed8c1be733",
+        ],
         bcs::to_bytes(&multisig_pk)?,
     )
     .await?;

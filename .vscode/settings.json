@@ -3,7 +3,9 @@
     "stdio.h": "c",
     "inttypes.h": "c",
     "sui_client.h": "c",
-    "sui_wallet.h": "c"
+    "sui_wallet.h": "c",
+    "sui_transaction.h": "c",
+    "sui_multisig.h": "c"
   },
   "C_Cpp_Runner.msvcBatchPath": "",
   "C_Cpp_Runner.cCompilerPath": "clang",

@@ -1,6 +1,9 @@
-use std::ffi::CStr;
+use multisig::{
+    _sign_and_execute_transaction, create_sui_transaction, get_or_create_multisig_public_key,
+};
 use std::ffi::{c_char, c_int, CString};
-use std::ptr;
+use std::ffi::{c_uchar, c_uint, CStr};
+use std::{ptr, slice};
 use sui_client::{
     _api_version, _available_rpc_methods, _available_subscriptions, _check_api_version,
 };
@@ -8,21 +11,23 @@ use sui_json_rpc_types::Page;
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
 use anyhow::{anyhow, Result};
+use sui_types::base_types::SuiAddress;
 use tokio::runtime; // Using Tokio as the async runtime
 
 mod balance;
 mod coin_read_api;
+mod multisig;
 mod sui_client;
+mod transactions;
 mod utils;
 mod wallet;
-mod transactions;
-use transactions::ProgrammableTransaction;
-use transactions::request_tokens_from_faucet;
-use coin_read_api::_coin_read_api;
 use balance::get_all_balances;
 use balance::get_balance;
 use balance::get_coins;
 use balance::get_total_supply;
+use coin_read_api::_coin_read_api;
+use transactions::request_tokens_from_faucet;
+use transactions::ProgrammableTransaction;
 use wallet::Wallet;
 
 use std::collections::HashMap;
@@ -276,6 +281,38 @@ pub struct CStringArray {
     len: c_int,
 }
 
+#[repr(C)]
+pub struct CU8Array {
+    data: *const c_uchar,
+    len: c_uint,
+    error: *const c_char,
+}
+
+#[repr(C)]
+pub struct MultiSig {
+    address: *const c_char,
+    bytes: CU8Array,
+    error: *const c_char,
+}
+
+#[no_mangle]
+pub extern "C" fn free_multisig(multisig: MultiSig) {
+    unsafe {
+        if !multisig.address.is_null() {
+            let _ = CString::from_raw(multisig.address as *mut c_char);
+        }
+        if !multisig.error.is_null() {
+            let _ = CString::from_raw(multisig.error as *mut c_char);
+        }
+        if !multisig.bytes.data.is_null() {
+            let _ = Box::from_raw(slice::from_raw_parts_mut(
+                multisig.bytes.data as *mut u8,
+                multisig.bytes.len as usize,
+            ));
+        }
+    }
+}
+
 // Struct to hold the result, either CStringArray or error message
 #[repr(C)]
 pub struct ResultCStringArray {
@@ -294,6 +331,100 @@ pub extern "C" fn free_strings(array: CStringArray) {
             }
         }
     }
+}
+
+#[no_mangle]
+pub extern "C" fn get_or_create_multisig(
+    addresses: CStringArray,
+    weights: CU8Array,
+    threshold: u16,
+) -> MultiSig {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        let addresses: Vec<&str> = unsafe {
+            (0..addresses.len)
+                .map(|i| {
+                    let c_str = CStr::from_ptr(*addresses.data.add(i as usize));
+                    c_str.to_str().expect("Invalid UTF-8")
+                })
+                .collect()
+        };
+        let weights: Vec<u8> =
+            unsafe { slice::from_raw_parts(weights.data, weights.len as usize).to_vec() };
+
+        match get_or_create_multisig_public_key(addresses, weights, threshold).await {
+            Ok(multisig_pk) => {
+                let bytes = bcs::to_bytes(&multisig_pk).unwrap();
+                println!("Vec<u8> in Rust: {:?}", bytes);
+
+                let boxed_bytes = bytes.into_boxed_slice();
+                let data_ptr = boxed_bytes.as_ptr();
+                let len = boxed_bytes.len() as c_uint;
+
+                // Leak the boxed slice to keep it alive
+                std::mem::forget(boxed_bytes);
+                MultiSig {
+                    bytes: CU8Array {
+                        data: data_ptr,
+                        len: len,
+                        error: std::ptr::null(),
+                    },
+                    address: CString::new(SuiAddress::from(&multisig_pk).to_string())
+                        .unwrap()
+                        .into_raw(),
+                    error: std::ptr::null(),
+                }
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap().into_raw();
+                MultiSig {
+                    bytes: CU8Array {
+                        data: std::ptr::null(),
+                        len: 0,
+                        error: std::ptr::null(),
+                    },
+                    address: std::ptr::null(),
+                    error: error_message,
+                }
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn sign_and_execute_transaction(
+    multisig: CU8Array,
+    tx: CU8Array,
+    addresses: CStringArray,
+) -> *const c_char {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        let addresses: Vec<&str> = unsafe {
+            (0..addresses.len)
+                .map(|i| {
+                    let c_str = CStr::from_ptr(*addresses.data.add(i as usize));
+                    c_str.to_str().expect("Invalid UTF-8")
+                })
+                .collect()
+        };
+        let tx: Vec<u8> = unsafe { slice::from_raw_parts(tx.data, tx.len as usize).to_vec() };
+        let multisig: Vec<u8> =
+            unsafe { slice::from_raw_parts(multisig.data, multisig.len as usize).to_vec() };
+        match _sign_and_execute_transaction(tx, addresses, multisig).await {
+            Ok(()) => {
+                let success_message = CString::new("Sign and execute transaction success").unwrap();
+                success_message.into_raw() // Return the raw pointer to the C string
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap();
+                error_message.into_raw() // Return the raw pointer to the C string
+            }
+        }
+    })
 }
 
 // Function to free the error string
@@ -406,6 +537,50 @@ pub extern "C" fn api_version() -> *const c_char {
         match _api_version().await {
             Ok(version) => version, // Return 0 to indicate success.
             Err(_) => CString::new("Error").unwrap().into_raw(), // Return 1 or other error codes to indicate an error.
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn create_transaction(
+    from_address: *const c_char,
+    to_address: *const c_char,
+    amount: u64,
+) -> CU8Array {
+    let rt = runtime::Runtime::new().unwrap();
+    let c_str = unsafe {
+        assert!(!from_address.is_null());
+        CStr::from_ptr(from_address)
+    };
+    let from_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let c_str = unsafe {
+        assert!(!to_address.is_null());
+        CStr::from_ptr(to_address)
+    };
+    let to_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+    rt.block_on(async {
+        match create_sui_transaction(from_address, to_address, amount).await {
+            Ok(tx) => {
+                let bytes = bcs::to_bytes(&tx).unwrap();
+                println!("Vec<u8> transaction in Rust: {:?}", bytes);
+                let boxed_bytes = bytes.into_boxed_slice();
+                let data_ptr = boxed_bytes.as_ptr();
+                let len = boxed_bytes.len() as c_uint;
+                std::mem::forget(boxed_bytes);
+                CU8Array {
+                    data: data_ptr,
+                    len: len,
+                    error: std::ptr::null(),
+                }
+            } // Return 0 to indicate success.
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap().into_raw();
+                CU8Array {
+                    data: std::ptr::null(),
+                    len: 0,
+                    error: error_message,
+                }
+            }
         }
     })
 }
@@ -731,32 +906,40 @@ pub extern "C" fn get_coins_sync(address: *const c_char) -> CCoinArray {
     to_c_coin_array(wrapped_coins)
 }
 
-
 #[no_mangle]
-pub extern "C" fn programmable_transaction(sender_address: *const c_char, recipient_address: *const c_char,amount: u64) -> *const c_char {
+pub extern "C" fn programmable_transaction(
+    sender_address: *const c_char,
+    recipient_address: *const c_char,
+    amount: u64,
+) -> *const c_char {
     let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
-    let recipient = unsafe { CStr::from_ptr(recipient_address).to_string_lossy().to_string() };
+    let recipient = unsafe {
+        CStr::from_ptr(recipient_address)
+            .to_string_lossy()
+            .to_string()
+    };
 
     // Here we run the async block synchronously for simplicity
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async move {
-        ProgrammableTransaction(&sender, &recipient,amount).await
-    });
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move { ProgrammableTransaction(&sender, &recipient, amount).await });
 
     match result {
-        Ok(_) => CString::new("Transaction completed successfully").unwrap().into_raw(),
+        Ok(_) => CString::new("Transaction completed successfully")
+            .unwrap()
+            .into_raw(),
         Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn request_tokens_from_faucet_(address_str: *const c_char) -> *const c_char {
-    let address= unsafe { CStr::from_ptr(address_str).to_string_lossy().to_string() };
+    let address = unsafe { CStr::from_ptr(address_str).to_string_lossy().to_string() };
 
     // Run the async function synchronously inside the Rust environment
-    let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
-        request_tokens_from_faucet(&address).await
-    });
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { request_tokens_from_faucet(&address).await });
 
     match result {
         Ok(_) => CString::new("Request successful").unwrap().into_raw(),
