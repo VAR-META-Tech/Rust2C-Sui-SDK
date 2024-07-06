@@ -4,7 +4,7 @@
 mod utils;
 use std::path::PathBuf;
 use std::str::FromStr;
-mod multisig;
+// mod multisig;
 mod transactions;
 use crate::utils::request_tokens_from_faucet;
 use anyhow::anyhow;
@@ -49,6 +49,13 @@ pub fn default_keystore_path() -> PathBuf {
 /// https://github.com/MystenLabs/sui/blob/main/docs/content/guides/developer/sui-101/sign-and-send-txn.mdx
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let _ = multisig::multisig_transaction().await;
+    // match multisig::multisig_transaction().await {
+    //     Ok(()) => {
+    //         println!("Transaction executed successfully.");
+    //     }
+    //     Err(e) => {
+    //         println!("Transaction failed: {:?}", e);
+    //     }
+    // }
     Ok(())
 }

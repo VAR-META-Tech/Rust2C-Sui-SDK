@@ -1,24 +1,25 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-
 use anyhow::bail;
+use futures::{future, stream::StreamExt};
 use reqwest::Client;
+use serde_json::json;
 use shared_crypto::intent::Intent;
+use std::{str::FromStr, time::Duration};
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
+use sui_json_rpc_types::{Coin, SuiObjectDataOptions};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use sui_sdk::{
-    rpc_types::SuiTransactionBlockResponseOptions, types::{
+    rpc_types::SuiTransactionBlockResponseOptions,
+    types::{
         programmable_transaction_builder::ProgrammableTransactionBuilder,
         quorum_driver_types::ExecuteTransactionRequestType,
         transaction::{Argument, Command, Transaction, TransactionData},
-    }, SuiClient, SuiClientBuilder
+    },
+    SuiClient, SuiClientBuilder,
 };
 use sui_types::base_types::{ObjectID, SuiAddress};
-use std::{str::FromStr, time::Duration};
-use sui_json_rpc_types::{Coin, SuiObjectDataOptions};
-use futures::{future, stream::StreamExt};
-use serde_json::json;
 const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
 #[derive(serde::Deserialize)]
 struct FaucetResponse {
@@ -39,15 +40,18 @@ struct FaucetResponse {
 // If you run this program several times, you should see the number of coins
 // for the recipient address increases.
 
-
-pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str , amount:u64) -> Result<(), anyhow::Error> {
+pub async fn ProgrammableTransaction(
+    senderaddress: &str,
+    recipientaddress: &str,
+    amount: u64,
+) -> Result<(), anyhow::Error> {
     // 1) get the Sui client, the sender and recipient that we will use
     // for the transaction, and find the coin we use as gas
 
     let sender = SuiAddress::from_str(senderaddress)?;
     let recipient = SuiAddress::from_str(recipientaddress)?;
     let sui = SuiClientBuilder::default().build_devnet().await?;
-    let _coin = fetch_coin(&sui,&sender).await?;
+    let _coin = fetch_coin(&sui, &sender).await?;
     if _coin.is_none() {
         request_tokens_from_faucet(senderaddress).await?;
     }
@@ -119,12 +123,9 @@ pub async fn ProgrammableTransaction(senderaddress: &str,recipientaddress: &str 
     Ok(())
 }
 
-
 /// Request tokens from the Faucet for the given address
 #[allow(unused_assignments)]
-pub async fn request_tokens_from_faucet(
-    address_str: &str,
-) -> Result<(), anyhow::Error> {
+pub async fn request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow::Error> {
     let sui_client = SuiClientBuilder::default().build_devnet().await?;
     let address = SuiAddress::from_str(address_str)?;
     let json_body = json![{

@@ -1,6 +1,3 @@
-use multisig::{
-    _sign_and_execute_transaction, create_sui_transaction, get_or_create_multisig_public_key,
-};
 use std::ffi::{c_char, c_int, CString};
 use std::ffi::{c_uchar, c_uint, CStr};
 use std::{ptr, slice};
@@ -26,11 +23,13 @@ use balance::get_balance;
 use balance::get_coins;
 use balance::get_total_supply;
 use coin_read_api::_coin_read_api;
+use multisig::{
+    _sign_and_execute_transaction, create_sui_transaction, get_or_create_multisig_public_key,
+};
+use std::collections::HashMap;
 use transactions::request_tokens_from_faucet;
 use transactions::ProgrammableTransaction;
 use wallet::Wallet;
-
-use std::collections::HashMap;
 mod event_api;
 use event_api::_event_api;
 use once_cell::sync::OnceCell;

@@ -1,5 +1,4 @@
-// Copyright (c) Mysten Labs, Inc.
-// SPDX-License-Identifier: Apache-2.0
+use super::SuiClientSingleton;
 
 use std::str::FromStr;
 use std::{ffi::c_char, path::PathBuf};
@@ -83,7 +82,7 @@ pub async fn create_sui_transaction(
     amount: u64,
 ) -> Result<TransactionData, anyhow::Error> {
     let multisig_addr = SuiAddress::from_str(multisig_addr)?;
-    let sui_client = SuiClientBuilder::default().build_devnet().await?;
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
     let recipient = SuiAddress::from_str(recipient_address)?;
 
     let mut ptb = ProgrammableTransactionBuilder::new();
@@ -100,20 +99,17 @@ pub async fn create_sui_transaction(
         vec![Argument::Result(0)],
         argument_address,
     ));
-    let gas_coin = sui_client
+    let coins = sui_client
         .coin_read_api()
-        .get_coins(multisig_addr, None, None, None)
-        .await?
-        .data
-        .into_iter()
-        .next()
-        .ok_or(anyhow!("No coins found for sender"))?;
+        .get_coins(multisig_addr, None, None, None) // get the first five coins
+        .await?;
+    let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
     let builder = ptb.finish();
     let gas_budget = 5_000_000;
     let gas_price = sui_client.read_api().get_reference_gas_price().await?;
     Ok(TransactionData::new_programmable(
         multisig_addr,
-        vec![gas_coin.object_ref()],
+        selected_gas_coins,
         builder,
         gas_budget,
         gas_price,
@@ -125,7 +121,7 @@ pub async fn _sign_and_execute_transaction(
     signers_addresses: Vec<&str>,
     multisig_pk: Vec<u8>,
 ) -> Result<(), anyhow::Error> {
-    let sui_client = SuiClientBuilder::default().build_devnet().await?;
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
     let keystore_path = default_keystore_path();
     let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let tx_data: TransactionData = bcs::from_bytes(&tx_data)?;
@@ -175,7 +171,7 @@ pub async fn multisig_transaction() -> Result<(), anyhow::Error> {
     let tx_data = create_sui_transaction(
         multisig_addr.to_string().as_str(),
         "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75",
-        540000000,
+        51240000000,
     )
     .await?;
 
