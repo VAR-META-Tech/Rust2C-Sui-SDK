@@ -10,11 +10,11 @@
 #include "sui_balance.h"
 #include "sui_transaction.h"
 #include "sui_multisig.h"
+#include "sui_nfts.h"
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-
 
     // code here
 

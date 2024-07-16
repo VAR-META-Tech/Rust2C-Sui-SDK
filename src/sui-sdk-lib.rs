@@ -1,3 +1,5 @@
+use nfts::{_mint, _transfer_nft};
+use serde::de;
 use std::ffi::{c_char, c_int, CString};
 use std::ffi::{c_uchar, c_uint, CStr};
 use std::{ptr, slice};
@@ -14,6 +16,7 @@ use tokio::runtime; // Using Tokio as the async runtime
 mod balance;
 mod coin_read_api;
 mod multisig;
+mod nfts;
 mod sui_client;
 mod transactions;
 mod utils;
@@ -26,6 +29,7 @@ use coin_read_api::_coin_read_api;
 use multisig::{
     _sign_and_execute_transaction, create_sui_transaction, get_or_create_multisig_public_key,
 };
+
 use std::collections::HashMap;
 use transactions::request_tokens_from_faucet;
 use transactions::ProgrammableTransaction;
@@ -416,6 +420,94 @@ pub extern "C" fn sign_and_execute_transaction(
         match _sign_and_execute_transaction(tx, addresses, multisig).await {
             Ok(()) => {
                 let success_message = CString::new("Sign and execute transaction success").unwrap();
+                success_message.into_raw() // Return the raw pointer to the C string
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap();
+                error_message.into_raw() // Return the raw pointer to the C string
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn mint_nft(
+    sender_address: *const c_char,
+    name: *const c_char,
+    description: *const c_char,
+    uri: *const c_char,
+) -> *const c_char {
+    let c_str = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address)
+    };
+    let sender_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!name.is_null());
+        CStr::from_ptr(name)
+    };
+    let name = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!description.is_null());
+        CStr::from_ptr(description)
+    };
+    let description = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!uri.is_null());
+        CStr::from_ptr(uri)
+    };
+    let uri = c_str.to_str().unwrap_or("Invalid UTF-8");
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _mint(sender_address, name, description, uri).await {
+            Ok(()) => {
+                let success_message = CString::new("Mint NFT to sender success").unwrap();
+                success_message.into_raw() // Return the raw pointer to the C string
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap();
+                error_message.into_raw() // Return the raw pointer to the C string
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn transfer_nft(
+    sender_address: *const c_char,
+    nft_id: *const c_char,
+    recipient_address: *const c_char,
+) -> *const c_char {
+    let c_str = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address)
+    };
+    let sender_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!nft_id.is_null());
+        CStr::from_ptr(nft_id)
+    };
+    let nft_id = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!recipient_address.is_null());
+        CStr::from_ptr(recipient_address)
+    };
+    let recipient_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _transfer_nft(sender_address, nft_id, recipient_address).await {
+            Ok(()) => {
+                let success_message = CString::new("Mint NFT to sender success").unwrap();
                 success_message.into_raw() // Return the raw pointer to the C string
             }
             Err(e) => {
