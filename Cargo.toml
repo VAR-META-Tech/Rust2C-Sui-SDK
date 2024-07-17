@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 sui-sdk = { git = "https://github.com/mystenlabs/sui", package = "sui-sdk"}
 sui-types = { git = "https://github.com/mystenlabs/sui", package = "sui-types"}
+move-core-types = { git = "https://github.com/mystenlabs/sui", package = "move-core-types"}
 sui-config = { git = "https://github.com/mystenlabs/sui", package = "sui-config"}
 sui-json-rpc-types = { git = "https://github.com/mystenlabs/sui", package = "sui-json-rpc-types"}
 sui-keys = { git = "https://github.com/mystenlabs/sui", package = "sui-keys"}

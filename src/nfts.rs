@@ -1,16 +1,20 @@
 use super::SuiClientSingleton;
 
-use std::str::FromStr;
-use std::{ffi::c_char, path::PathBuf};
-
+use anyhow::Result;
 use anyhow::{anyhow, Ok};
 use fastcrypto::encoding::Encoding;
 use fastcrypto::hash::HashFunction;
+use move_core_types::language_storage::StructTag;
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{de, Serialize};
 use shared_crypto::intent::{Intent, IntentMessage};
+use std::ffi::{CStr, CString};
+use std::str::FromStr;
+use std::{ffi::c_char, path::PathBuf};
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
-use sui_json_rpc_types::SuiObjectData;
+use sui_json_rpc_types::{
+    SuiObjectData, SuiObjectDataFilter, SuiObjectDataOptions, SuiObjectResponseQuery,
+};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     rpc_types::SuiTransactionBlockResponseOptions,
@@ -35,6 +39,7 @@ use sui_types::signature::GenericSignature;
 use sui_types::transaction::ObjectArg;
 
 pub async fn _mint(
+    package_id: &str,
     sender_address: &str,
     name: &str,
     description: &str,
@@ -75,8 +80,7 @@ pub async fn _mint(
 
     // 3) add a move call to the PTB
     // Replace the pkg_id with the package id you want to call
-    let pkg_id = "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002";
-    let package = ObjectID::from_hex_literal(pkg_id).map_err(|e| anyhow!(e))?;
+    let package = ObjectID::from_hex_literal(package_id).map_err(|e| anyhow!(e))?;
     let module = Identifier::new("nft").map_err(|e| anyhow!(e))?;
     let function = Identifier::new("mint_to_sender").map_err(|e| anyhow!(e))?;
     ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -120,6 +124,7 @@ pub async fn _mint(
 }
 
 pub async fn _transfer_nft(
+    package_id: &str,
     sender_address: &str,
     nft_id: &str,
     recipient_address: &str,
@@ -159,8 +164,7 @@ pub async fn _transfer_nft(
     ptb.input(recipient_argument)?;
     // 3) add a move call to the PTB
     // Replace the pkg_id with the package id you want to call
-    let pkg_id = "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002";
-    let package = ObjectID::from_hex_literal(pkg_id).map_err(|e| anyhow!(e))?;
+    let package = ObjectID::from_hex_literal(package_id).map_err(|e| anyhow!(e))?;
     let module = Identifier::new("nft").map_err(|e| anyhow!(e))?;
     let function = Identifier::new("transfer").map_err(|e| anyhow!(e))?;
     ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
@@ -201,4 +205,25 @@ pub async fn _transfer_nft(
         .await?;
     println!("{}", transaction_response);
     Ok(())
+}
+
+pub async fn _get_wallet_objects(address: &str, object_type: &str) -> Result<Vec<SuiObjectData>> {
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    let active_address: SuiAddress = SuiAddress::from_str(address)?;
+    let query = Some(SuiObjectResponseQuery {
+        filter: Some(SuiObjectDataFilter::StructType(StructTag::from_str(
+            object_type,
+        )?)),
+        options: Some(SuiObjectDataOptions::new().with_type()),
+    });
+    let owned_objects = sui_client
+        .read_api()
+        .get_owned_objects(active_address, query, None, None)
+        .await?
+        .data;
+    let data: Vec<SuiObjectData> = owned_objects
+        .into_iter()
+        .filter_map(|owned_objects| owned_objects.data)
+        .collect();
+    Ok(data)
 }

@@ -1,4 +1,4 @@
-use nfts::{_mint, _transfer_nft};
+use nfts::{_get_wallet_objects, _mint, _transfer_nft};
 use serde::de;
 use std::ffi::{c_char, c_int, CString};
 use std::ffi::{c_uchar, c_uint, CStr};
@@ -6,7 +6,7 @@ use std::{ptr, slice};
 use sui_client::{
     _api_version, _available_rpc_methods, _available_subscriptions, _check_api_version,
 };
-use sui_json_rpc_types::Page;
+use sui_json_rpc_types::{Page, SuiObjectData};
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
 use anyhow::{anyhow, Result};
@@ -244,7 +244,80 @@ pub extern "C" fn generate_and_add_key() -> *mut Wallet {
     let wallet = wallet::generate_and_add_key().unwrap();
     Box::into_raw(Box::new(wallet))
 }
+#[repr(C)]
+pub struct CSuiObjectData {
+    object_id: *mut c_char,
+    version: u64,
+    digest: *mut c_char,
+    type_: *mut c_char,
+    owner: *mut c_char,
+    previous_transaction: *mut c_char,
+    storage_rebate: u64,
+    display: *mut c_char,
+    content: *mut c_char,
+    bcs: *mut c_char,
+}
 
+impl CSuiObjectData {
+    fn from(data: SuiObjectData) -> Self {
+        CSuiObjectData {
+            object_id: CString::new(data.object_id.to_string()).unwrap().into_raw(),
+            version: data.version.value(),
+            digest: CString::new(data.digest.to_string()).unwrap().into_raw(),
+            type_: match data.type_ {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            owner: match data.owner {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            previous_transaction: match data.previous_transaction {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            storage_rebate: data.storage_rebate.unwrap_or_default(),
+            display: CString::new(format!("{:?}", data.display))
+                .unwrap()
+                .into_raw(),
+            content: CString::new(format!("{:?}", data.content))
+                .unwrap()
+                .into_raw(),
+            bcs: CString::new(format!("{:?}", data.bcs)).unwrap().into_raw(),
+        }
+    }
+    pub fn show(&self) {
+        unsafe {
+            println!("object_id: {}", self.c_str_to_string(self.object_id));
+            println!("version: {}", self.version);
+            println!("digest: {}", self.c_str_to_string(self.digest));
+            println!("type_: {}", self.c_str_to_string(self.type_));
+            println!("owner: {}", self.c_str_to_string(self.owner));
+            println!(
+                "previous_transaction: {}",
+                self.c_str_to_string(self.previous_transaction)
+            );
+            println!("storage_rebate: {}", self.storage_rebate);
+            println!("display: {}", self.c_str_to_string(self.display));
+            println!("content: {}", self.c_str_to_string(self.content));
+            println!("bcs: {}", self.c_str_to_string(self.bcs));
+        }
+    }
+
+    unsafe fn c_str_to_string(&self, c_str: *mut c_char) -> String {
+        if c_str.is_null() {
+            String::from("null")
+        } else {
+            CStr::from_ptr(c_str).to_string_lossy().into_owned()
+        }
+    }
+}
+
+#[repr(C)]
+pub struct CSuiObjectDataArray {
+    data: *mut CSuiObjectData,
+    len: usize,
+}
 #[no_mangle]
 pub extern "C" fn get_wallet_from_address(address: *const c_char) -> *mut Wallet {
     let c_str = unsafe {
@@ -432,11 +505,17 @@ pub extern "C" fn sign_and_execute_transaction(
 
 #[no_mangle]
 pub extern "C" fn mint_nft(
+    package_id: *const c_char,
     sender_address: *const c_char,
     name: *const c_char,
     description: *const c_char,
     uri: *const c_char,
 ) -> *const c_char {
+    let c_str = unsafe {
+        assert!(!package_id.is_null());
+        CStr::from_ptr(package_id)
+    };
+    let package_id = c_str.to_str().unwrap_or("Invalid UTF-8");
     let c_str = unsafe {
         assert!(!sender_address.is_null());
         CStr::from_ptr(sender_address)
@@ -464,7 +543,7 @@ pub extern "C" fn mint_nft(
     let rt = runtime::Runtime::new().unwrap();
     // Block on the async function and translate the Result to a C-friendly format.
     rt.block_on(async {
-        match _mint(sender_address, name, description, uri).await {
+        match _mint(package_id, sender_address, name, description, uri).await {
             Ok(()) => {
                 let success_message = CString::new("Mint NFT to sender success").unwrap();
                 success_message.into_raw() // Return the raw pointer to the C string
@@ -479,10 +558,16 @@ pub extern "C" fn mint_nft(
 
 #[no_mangle]
 pub extern "C" fn transfer_nft(
+    package_id: *const c_char,
     sender_address: *const c_char,
     nft_id: *const c_char,
     recipient_address: *const c_char,
 ) -> *const c_char {
+    let c_str = unsafe {
+        assert!(!package_id.is_null());
+        CStr::from_ptr(package_id)
+    };
+    let package_id = c_str.to_str().unwrap_or("Invalid UTF-8");
     let c_str = unsafe {
         assert!(!sender_address.is_null());
         CStr::from_ptr(sender_address)
@@ -505,7 +590,7 @@ pub extern "C" fn transfer_nft(
     let rt = runtime::Runtime::new().unwrap();
     // Block on the async function and translate the Result to a C-friendly format.
     rt.block_on(async {
-        match _transfer_nft(sender_address, nft_id, recipient_address).await {
+        match _transfer_nft(package_id, sender_address, nft_id, recipient_address).await {
             Ok(()) => {
                 let success_message = CString::new("Mint NFT to sender success").unwrap();
                 success_message.into_raw() // Return the raw pointer to the C string
@@ -899,6 +984,70 @@ pub extern "C" fn get_balances(address: *const c_char) -> CBalanceArray {
         .block_on(balance::_get_all_balances(address_str))
         .unwrap_or_else(|_| Vec::new());
     to_c_balance_array(balances)
+}
+
+#[no_mangle]
+pub extern "C" fn get_wallet_objects(
+    address: *const c_char,
+    object_type: *const c_char,
+) -> CSuiObjectDataArray {
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address = c_str.to_str().unwrap_or("Invalid UTF-8");
+
+    let c_str = unsafe {
+        assert!(!object_type.is_null());
+        CStr::from_ptr(object_type)
+    };
+    let object_type = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let objects = runtime
+        .block_on(_get_wallet_objects(address, object_type))
+        .unwrap_or_else(|_| Vec::new());
+    let mut c_objects: Vec<CSuiObjectData> =
+        objects.into_iter().map(CSuiObjectData::from).collect();
+    let ptr = c_objects.as_mut_ptr();
+    let len = c_objects.len();
+    std::mem::forget(c_objects);
+    CSuiObjectDataArray { data: ptr, len }
+}
+
+#[no_mangle]
+pub extern "C" fn free_sui_object_data_list(array: CSuiObjectDataArray) {
+    if array.data.is_null() {
+        return;
+    }
+    unsafe {
+        let boxed_slice = Box::from_raw(std::slice::from_raw_parts_mut(array.data, array.len));
+        for obj in boxed_slice.iter() {
+            if !obj.object_id.is_null() {
+                CString::from_raw(obj.object_id);
+            }
+            if !obj.digest.is_null() {
+                CString::from_raw(obj.digest);
+            }
+            if !obj.type_.is_null() {
+                CString::from_raw(obj.type_);
+            }
+            if !obj.owner.is_null() {
+                CString::from_raw(obj.owner);
+            }
+            if !obj.previous_transaction.is_null() {
+                CString::from_raw(obj.previous_transaction);
+            }
+            if !obj.display.is_null() {
+                CString::from_raw(obj.display);
+            }
+            if !obj.content.is_null() {
+                CString::from_raw(obj.content);
+            }
+            if !obj.bcs.is_null() {
+                CString::from_raw(obj.bcs);
+            }
+        }
+    }
 }
 
 // Wrapper struct for Coin

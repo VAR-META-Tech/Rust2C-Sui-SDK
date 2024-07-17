@@ -1,11 +1,17 @@
 mod utils;
-use std::str::FromStr;
-
 use anyhow::anyhow;
 use fastcrypto::encoding::Base58;
+use move_core_types::language_storage::StructTag;
+use rand::seq::index;
 use shared_crypto::intent::Intent;
+use std::{
+    ffi::{c_char, CStr, CString},
+    str::FromStr,
+};
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
-use sui_json_rpc_types::{SuiObjectData, SuiObjectRef};
+use sui_json_rpc_types::{
+    SuiObjectData, SuiObjectDataFilter, SuiObjectDataOptions, SuiObjectRef, SuiObjectResponseQuery,
+};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use sui_sdk::{
     rpc_types::SuiTransactionBlockResponseOptions,
@@ -41,86 +47,108 @@ use utils::setup_for_write;
 // Sui address that received the coin.
 // If you run this program several times, you should see the number of coins
 // for the recipient address increases.
+
+#[repr(C)]
+pub struct CSuiObjectData {
+    object_id: *mut c_char,
+    version: u64,
+    digest: *mut c_char,
+    type_: *mut c_char,
+    owner: *mut c_char,
+    previous_transaction: *mut c_char,
+    storage_rebate: u64,
+    display: *mut c_char,
+    content: *mut c_char,
+    bcs: *mut c_char,
+}
+
+impl CSuiObjectData {
+    fn from(data: SuiObjectData) -> Self {
+        CSuiObjectData {
+            object_id: CString::new(data.object_id.to_string()).unwrap().into_raw(),
+            version: data.version.value(),
+            digest: CString::new(data.digest.to_string()).unwrap().into_raw(),
+            type_: match data.type_ {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            owner: match data.owner {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            previous_transaction: match data.previous_transaction {
+                Some(obj) => CString::new(obj.to_string()).unwrap().into_raw(),
+                None => CString::new("None").unwrap().into_raw(),
+            },
+            storage_rebate: data.storage_rebate.unwrap_or_default(),
+            display: CString::new(format!("{:?}", data.display))
+                .unwrap()
+                .into_raw(),
+            content: CString::new(format!("{:?}", data.content))
+                .unwrap()
+                .into_raw(),
+            bcs: CString::new(format!("{:?}", data.bcs)).unwrap().into_raw(),
+        }
+    }
+    pub fn show(&self) {
+        unsafe {
+            println!("object_id: {}", self.c_str_to_string(self.object_id));
+            println!("version: {}", self.version);
+            println!("digest: {}", self.c_str_to_string(self.digest));
+            println!("type_: {}", self.c_str_to_string(self.type_));
+            println!("owner: {}", self.c_str_to_string(self.owner));
+            println!(
+                "previous_transaction: {}",
+                self.c_str_to_string(self.previous_transaction)
+            );
+            println!("storage_rebate: {}", self.storage_rebate);
+            println!("display: {}", self.c_str_to_string(self.display));
+            println!("content: {}", self.c_str_to_string(self.content));
+            println!("bcs: {}", self.c_str_to_string(self.bcs));
+        }
+    }
+
+    unsafe fn c_str_to_string(&self, c_str: *mut c_char) -> String {
+        if c_str.is_null() {
+            String::from("null")
+        } else {
+            CStr::from_ptr(c_str).to_string_lossy().into_owned()
+        }
+    }
+}
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let sui_client = SuiClientBuilder::default().build_devnet().await?;
     let active_address: SuiAddress =
         SuiAddress::from_str("0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd")?;
 
-    // we need to find the coin we will use as gas
-    let coins = sui_client
-        .coin_read_api()
-        .get_coins(active_address, None, None, None)
-        .await?;
-    let coin = coins.data.into_iter().next().unwrap();
-
-    let mut ptb = ProgrammableTransactionBuilder::new();
-
-    let nft_id = "0x9dcd002c78d7408563d86c82f4dec8aa2e6653c64c46ff85f92131e6ec89aa71";
-    let recipient = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
+    let query = Some(SuiObjectResponseQuery {
+        filter: Some(SuiObjectDataFilter::StructType(StructTag::from_str(
+            "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002::nft::NFT",
+        )?)),
+        options: Some(SuiObjectDataOptions::new().with_type()),
+    });
 
     let owned_objects = sui_client
         .read_api()
-        .get_owned_objects(active_address, None, None, None)
-        .await?;
-    let nft_object_info = owned_objects
-        .data
-        .iter()
-        .find(|obj| obj.object_id().unwrap() == ObjectID::from_str(nft_id).unwrap())
-        .ok_or_else(|| anyhow!("NFT object not found"))?;
+        .get_owned_objects(active_address, query, None, None)
+        .await?
+        .data;
 
-    let object_ref = <std::option::Option<SuiObjectData> as Clone>::clone(&nft_object_info.data)
-        .unwrap()
-        .object_ref();
-    // Convert inputs to CallArg
-    let nft_id_argument = CallArg::Object(ObjectArg::ImmOrOwnedObject(object_ref));
-    let recipient_argument = CallArg::Pure(
-        bcs::to_bytes(&SuiAddress::from_str(recipient).map_err(|e| anyhow!(e))?).unwrap(),
-    );
-    ptb.input(nft_id_argument)?;
-    ptb.input(recipient_argument)?;
-    // 3) add a move call to the PTB
-    // Replace the pkg_id with the package id you want to call
-    let pkg_id = "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002";
-    let package = ObjectID::from_hex_literal(pkg_id).map_err(|e| anyhow!(e))?;
-    let module = Identifier::new("nft").map_err(|e| anyhow!(e))?;
-    let function = Identifier::new("transfer").map_err(|e| anyhow!(e))?;
-    ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
-        package,
-        module,
-        function,
-        type_arguments: vec![],
-        arguments: vec![Argument::Input(0), Argument::Input(1)],
-    })));
+    let data: Vec<SuiObjectData> = owned_objects
+        .into_iter()
+        .filter_map(|owned_objects| owned_objects.data)
+        .collect();
+    // println!(" *** Owned Objects data ***");
+    // println!("{:?}", data);
+    // println!(" *** Owned Objects data ***\n");
+    // println!("{:?}", data[1].object_id.to_string());
 
-    // build the transaction block by calling finish on the ptb
-    let builder = ptb.finish();
-
-    let gas_budget = 10_000_000;
-    let gas_price = sui_client.read_api().get_reference_gas_price().await?;
-    // create the transaction data that will be sent to the network
-    let tx_data = TransactionData::new_programmable(
-        active_address,
-        vec![coin.object_ref()],
-        builder,
-        gas_budget,
-        gas_price,
-    );
-
-    // 4) sign transaction
-    let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
-    let signature = keystore.sign_secure(&active_address, &tx_data, Intent::sui_transaction())?;
-
-    // 5) execute the transaction
-    print!("Executing the transaction...");
-    let transaction_response = sui_client
-        .quorum_driver_api()
-        .execute_transaction_block(
-            Transaction::from_data(tx_data, vec![signature]),
-            SuiTransactionBlockResponseOptions::full_content(),
-            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
-        )
-        .await?;
-    println!("{}", transaction_response);
+    let c_data: Vec<CSuiObjectData> = data.into_iter().map(CSuiObjectData::from).collect();
+    println!(" *** Owned Objects cdata ***");
+    for (_index, data) in c_data.into_iter().enumerate() {
+        data.show()
+    }
+    println!(" *** Owned Objects cdata ***\n");
     Ok(())
 }

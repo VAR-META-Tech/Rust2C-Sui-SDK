@@ -5650,6 +5650,7 @@ dependencies = [
  "fastcrypto-zkp",
  "futures",
  "futures-core",
+ "move-core-types",
  "once_cell",
  "rand",
  "reqwest",
