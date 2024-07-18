@@ -6,7 +6,7 @@ use std::{ptr, slice};
 use sui_client::{
     _api_version, _available_rpc_methods, _available_subscriptions, _check_api_version,
 };
-use sui_json_rpc_types::{Page, SuiObjectData};
+use sui_json_rpc_types::{Page, SuiData, SuiObjectData};
 use sui_sdk::{SuiClient, SuiClientBuilder};
 // Import the necessary crates
 use anyhow::{anyhow, Result};
@@ -260,6 +260,15 @@ pub struct CSuiObjectData {
 
 impl CSuiObjectData {
     fn from(data: SuiObjectData) -> Self {
+        let content = data
+            .content
+            .unwrap()
+            .try_as_move()
+            .unwrap()
+            .fields
+            .clone()
+            .to_json_value()
+            .to_string();
         CSuiObjectData {
             object_id: CString::new(data.object_id.to_string()).unwrap().into_raw(),
             version: data.version.value(),
@@ -280,9 +289,7 @@ impl CSuiObjectData {
             display: CString::new(format!("{:?}", data.display))
                 .unwrap()
                 .into_raw(),
-            content: CString::new(format!("{:?}", data.content))
-                .unwrap()
-                .into_raw(),
+            content: CString::new(content).unwrap().into_raw(),
             bcs: CString::new(format!("{:?}", data.bcs)).unwrap().into_raw(),
         }
     }
@@ -592,7 +599,7 @@ pub extern "C" fn transfer_nft(
     rt.block_on(async {
         match _transfer_nft(package_id, sender_address, nft_id, recipient_address).await {
             Ok(()) => {
-                let success_message = CString::new("Mint NFT to sender success").unwrap();
+                let success_message = CString::new("Transfer NFT success").unwrap();
                 success_message.into_raw() // Return the raw pointer to the C string
             }
             Err(e) => {

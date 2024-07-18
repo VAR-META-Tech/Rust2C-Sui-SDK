@@ -10,7 +10,8 @@ use std::{
 };
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
 use sui_json_rpc_types::{
-    SuiObjectData, SuiObjectDataFilter, SuiObjectDataOptions, SuiObjectRef, SuiObjectResponseQuery,
+    SuiData, SuiMoveStruct, SuiObjectData, SuiObjectDataFilter, SuiObjectDataOptions, SuiObjectRef,
+    SuiObjectResponseQuery, SuiParsedData,
 };
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use sui_sdk::{
@@ -64,6 +65,15 @@ pub struct CSuiObjectData {
 
 impl CSuiObjectData {
     fn from(data: SuiObjectData) -> Self {
+        let content = data
+            .content
+            .unwrap()
+            .try_as_move()
+            .unwrap()
+            .fields
+            .clone()
+            .to_json_value()
+            .to_string();
         CSuiObjectData {
             object_id: CString::new(data.object_id.to_string()).unwrap().into_raw(),
             version: data.version.value(),
@@ -84,9 +94,7 @@ impl CSuiObjectData {
             display: CString::new(format!("{:?}", data.display))
                 .unwrap()
                 .into_raw(),
-            content: CString::new(format!("{:?}", data.content))
-                .unwrap()
-                .into_raw(),
+            content: CString::new(content).unwrap().into_raw(),
             bcs: CString::new(format!("{:?}", data.bcs)).unwrap().into_raw(),
         }
     }
@@ -126,7 +134,12 @@ async fn main() -> Result<(), anyhow::Error> {
         filter: Some(SuiObjectDataFilter::StructType(StructTag::from_str(
             "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002::nft::NFT",
         )?)),
-        options: Some(SuiObjectDataOptions::new().with_type()),
+        options: Some(
+            SuiObjectDataOptions::new()
+                .with_type()
+                .with_display()
+                .with_content(),
+        ),
     });
 
     let owned_objects = sui_client
@@ -139,16 +152,18 @@ async fn main() -> Result<(), anyhow::Error> {
         .into_iter()
         .filter_map(|owned_objects| owned_objects.data)
         .collect();
-    // println!(" *** Owned Objects data ***");
-    // println!("{:?}", data);
-    // println!(" *** Owned Objects data ***\n");
-    // println!("{:?}", data[1].object_id.to_string());
 
-    let c_data: Vec<CSuiObjectData> = data.into_iter().map(CSuiObjectData::from).collect();
-    println!(" *** Owned Objects cdata ***");
-    for (_index, data) in c_data.into_iter().enumerate() {
-        data.show()
-    }
-    println!(" *** Owned Objects cdata ***\n");
+    let content = <SuiMoveStruct as Clone>::clone(
+        &<std::option::Option<SuiParsedData> as Clone>::clone(&data[0].content)
+            .unwrap()
+            .try_as_move()
+            .unwrap()
+            .fields,
+    )
+    .to_string();
+    let x: &String = &data[0].content.clone().unwrap().to_string();
+    // .to_json_value()
+    println!("{:?}", x);
+
     Ok(())
 }

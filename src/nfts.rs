@@ -214,7 +214,7 @@ pub async fn _get_wallet_objects(address: &str, object_type: &str) -> Result<Vec
         filter: Some(SuiObjectDataFilter::StructType(StructTag::from_str(
             object_type,
         )?)),
-        options: Some(SuiObjectDataOptions::new().with_type()),
+        options: Some(SuiObjectDataOptions::new().with_type().with_content()),
     });
     let owned_objects = sui_client
         .read_api()
