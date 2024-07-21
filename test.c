@@ -51,6 +51,7 @@ int main()
         printf("Display: %s\n", array.data[i].display);
         printf("Content: %s\n", array.data[i].content);
         printf("BCS: %s\n", array.data[i].bcs);
+
         printf("\n");
     }
 
