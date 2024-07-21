@@ -1,7 +1,3 @@
 cargo build --release
-gcc testJson.cpp -L target/release/ -lsui_rust_sdk -o test
+gcc test.c -L target/release/ -lsui_rust_sdk -o test
 ./test
-
-
-
-
