@@ -4,56 +4,21 @@
 
 int main()
 {
-    const char *package_id = "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002";
+    const char *sender_address = "0x47d27bcd44c9d68b3dfee3827b594feb47c44fe9a2279e0cb3d19ca9f754a4da";
+    const char *recipient_address = "0x4930ad3c0669150e474f2aeead1eac16919105720b92566c247044f523547441";
+    const char *sponser_address = "0x6a7f8196917d9452c2331d8e186e55df604f17dfdebf042ddfd76287137bd5e2";
+    int64_t amount = 500000000;
 
-    // const char *sender_address = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
-    // const char *name = "NgocNFT2";
-    // const char *description = "NFT Description";
-    // const char *uri = "https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg";
-    // const char *result = mint_nft(package_id, sender_address, name, description, uri);
-
-    // const char *sender_address = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
-    // const char *nft_id = "0x68ce773d046e42959757a800af4db34ce5a725630841824d2fd02b08c86d476e";
-    // const char *recipient_address = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
-    // const char *result = transfer_nft(package_id, sender_address, nft_id, recipient_address);
-
-    // if (result != NULL)
-    // {
-    //     printf("Result: %s\n", result);
-    //     // Free the result when done
-    //     free((void *)result);
-    // }
-    // else
-    // {
-    //     printf("Error occurred\n");
-    // }
-
-    CSuiObjectDataArray array =
-        get_wallet_objects(
-            "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd",
-            "0xd1efbd86210322b550a8d6017ad5113fda2bd4f486593096f83e7b9ce3cbd002::nft::NFT");
-
-    if (array.data == NULL)
+    const char *result = programmable_transaction_allow_sponser(sender_address, recipient_address, amount, sponser_address);
+    if (result != NULL)
     {
-        printf("Failed to get Sui object data list\n");
-        return 1;
+        printf("Result: %s\n", result);
+        // Free the result when done
+        free((void *)result);
     }
-
-    for (size_t i = 0; i < array.len; i++)
+    else
     {
-        printf("Object ID: %s\n", array.data[i].object_id);
-        printf("Version: %llu\n", array.data[i].version);
-        printf("Digest: %s\n", array.data[i].digest);
-        printf("Type: %s\n", array.data[i].type_);
-        printf("Owner: %s\n", array.data[i].owner);
-        printf("Previous Transaction: %s\n", array.data[i].previous_transaction);
-        printf("Storage Rebate: %llu\n", array.data[i].storage_rebate);
-        printf("Display: %s\n", array.data[i].display);
-        printf("Content: %s\n", array.data[i].content);
-        printf("BCS: %s\n", array.data[i].bcs);
-        printf("\n");
+        printf("Error occurred\n");
     }
-
-    free_sui_object_data_list(array);
     return 0;
 }

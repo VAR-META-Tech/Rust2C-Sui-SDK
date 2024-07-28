@@ -60,7 +60,7 @@ pub async fn ProgrammableTransaction(
         .coin_read_api()
         .get_coins(sender, None, None, None)
         .await?;
-    let coin = coins.data.into_iter().next().unwrap();
+    let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
 
     // programmable transactions allows the user to bundle a number of actions into one transaction
     let mut ptb = ProgrammableTransactionBuilder::new();
@@ -88,7 +88,7 @@ pub async fn ProgrammableTransaction(
     // create the transaction data that will be sent to the network
     let tx_data = TransactionData::new_programmable(
         sender,
-        vec![coin.object_ref()],
+        selected_gas_coins,
         builder,
         gas_budget,
         gas_price,
@@ -104,6 +104,93 @@ pub async fn ProgrammableTransaction(
         .quorum_driver_api()
         .execute_transaction_block(
             Transaction::from_data(tx_data, vec![signature]),
+            SuiTransactionBlockResponseOptions::full_content(),
+            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+        )
+        .await?;
+    print!("done\n Transaction information: ");
+    println!("{:?}", transaction_response);
+
+    let coins = sui
+        .coin_read_api()
+        .get_coins(recipient, None, None, None)
+        .await?;
+
+    println!(
+        "After the transfer, the recipient address {recipient} has {} coins",
+        coins.data.len()
+    );
+    Ok(())
+}
+
+pub async fn ProgrammableTransactionAllowSponser(
+    senderaddress: &str,
+    recipientaddress: &str,
+    amount: u64,
+    sponser_address: &str,
+) -> Result<(), anyhow::Error> {
+    // 1) get the Sui client, the sender and recipient that we will use
+    // for the transaction, and find the coin we use as gas
+
+    let sponser = SuiAddress::from_str(sponser_address)?;
+    let sender = SuiAddress::from_str(senderaddress)?;
+    let recipient = SuiAddress::from_str(recipientaddress)?;
+    let sui = SuiClientBuilder::default().build_devnet().await?;
+    let _coin = fetch_coin(&sui, &sender).await?;
+    if _coin.is_none() {
+        request_tokens_from_faucet(senderaddress).await?;
+    }
+    // we need to find the coin we will use as gas
+    let coins = sui
+        .coin_read_api()
+        .get_coins(sponser, None, None, None)
+        .await?;
+    let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
+
+    // programmable transactions allows the user to bundle a number of actions into one transaction
+    let mut ptb = ProgrammableTransactionBuilder::new();
+
+    // 2) split coin
+    // the amount we want in the new coin, 1000 MIST
+    let split_coint_amount = ptb.pure(amount)?; // note that we need to specify the u64 type
+    ptb.command(Command::SplitCoins(
+        Argument::GasCoin,
+        vec![split_coint_amount],
+    ));
+
+    // 3) transfer the new coin to a different address
+    let argument_address = ptb.pure(recipient)?;
+    ptb.command(Command::TransferObjects(
+        vec![Argument::Result(0)],
+        argument_address,
+    ));
+
+    // finish building the transaction block by calling finish on the ptb
+    let builder = ptb.finish();
+
+    let gas_budget = 5_000_000;
+    let gas_price = sui.read_api().get_reference_gas_price().await?;
+    // create the transaction data that will be sent to the network
+    let tx_data = TransactionData::new_programmable_allow_sponsor(
+        sender,
+        selected_gas_coins,
+        builder,
+        gas_budget,
+        gas_price,
+        sponser,
+    );
+
+    // 4) sign transaction
+    let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
+    let sender_signature = keystore.sign_secure(&sender, &tx_data, Intent::sui_transaction())?;
+    let sponser_signature = keystore.sign_secure(&sponser, &tx_data, Intent::sui_transaction())?;
+
+    // 5) execute the transaction
+    print!("Executing the transaction...");
+    let transaction_response = sui
+        .quorum_driver_api()
+        .execute_transaction_block(
+            Transaction::from_data(tx_data, vec![sender_signature, sponser_signature]),
             SuiTransactionBlockResponseOptions::full_content(),
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )

@@ -31,7 +31,7 @@ use multisig::{
 };
 
 use std::collections::HashMap;
-use transactions::request_tokens_from_faucet;
+use transactions::{request_tokens_from_faucet, ProgrammableTransactionAllowSponser};
 use transactions::ProgrammableTransaction;
 use wallet::Wallet;
 mod event_api;
@@ -1170,6 +1170,40 @@ pub extern "C" fn programmable_transaction(
     let result = tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(async move { ProgrammableTransaction(&sender, &recipient, amount).await });
+
+    match result {
+        Ok(_) => CString::new("Transaction completed successfully")
+            .unwrap()
+            .into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn programmable_transaction_allow_sponser(
+    sender_address: *const c_char,
+    recipient_address: *const c_char,
+    amount: u64,
+    sponser_address: *const c_char,
+) -> *const c_char {
+    let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
+    let sponser = unsafe {
+        CStr::from_ptr(sponser_address)
+            .to_string_lossy()
+            .to_string()
+    };
+    let recipient = unsafe {
+        CStr::from_ptr(recipient_address)
+            .to_string_lossy()
+            .to_string()
+    };
+
+    // Here we run the async block synchronously for simplicity
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move {
+            ProgrammableTransactionAllowSponser(&sender, &recipient, amount, &sponser).await
+        });
 
     match result {
         Ok(_) => CString::new("Transaction completed successfully")

@@ -9,8 +9,9 @@
 extern "C"
 {
 #endif
-extern char* programmable_transaction(const char* sender_address, const char* recipient_address,uint64_t amount);
-extern const char* request_tokens_from_faucet_(const char* address_str);
+    extern char *programmable_transaction(const char *sender_address, const char *recipient_address, uint64_t amount);
+    extern char *programmable_transaction_allow_sponser(const char *sender_address, const char *recipient_address, uint64_t amount, const char *sponser_address);
+    extern const char *request_tokens_from_faucet_(const char *address_str);
 #ifdef __cplusplus
 }
 #endif
