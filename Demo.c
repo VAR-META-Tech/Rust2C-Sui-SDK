@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "sui_lib.h"
+#include "header/sui_lib.h"
 
 int main()
 {
