@@ -82,20 +82,21 @@ Run follow command to setting Envỉroment befor testing:
     ```sh
     sui client gas
     ```
-
-### Using Unreal-Sui-SDK
-Unreal-Sui-SDK can integrate into your own Unreal projects.
-We have two options to run the project:
-
-   1. Open the Unreal project directly through the SuisdkUnreal.uproject file and then click the Run icon to test.
-    
-   2. Open the project using Visual Studio Code, build the source code, and run the test.
-
-
+7. Build Project:
+     ```sh
+    cargo build --release
+    ```
+### Using Rust2C-Sui-SDK
+Rust2C-Sui-SDK can integrate into your own C++ and C projects.
+You can custom your Demo.c and run below cmd to check your source code.
+  ```sh
+    sh Demo.sh
+  ```
+Check Unreal-Sui-SDK and Unity-Sui-SDK to help you how to integrate Rust2C-Sui-SDK library into your owns project
 
 ### Examples ###
 
-The SDK comes with several examples that show how to leverage the Rust2C-Sui-SDK to its full potential. The examples include Wallet Creation and Management, Token Transfers,  NFT Minting, Account Funding, and Multi-signature.
+The SDK comes with several examples ( Unreal-Sui-SDK and Unity-Sui-SDK) that show how to leverage the Rust2C-Sui-SDK to its full potential.
 
 
 ### License ###
