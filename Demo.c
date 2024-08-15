@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "sui_lib.h"
+#include "header/sui_lib.h"
 
 void print_wallet(const Wallet *wallet)
 {
@@ -151,7 +151,7 @@ void test_programmable_transaction_allow_sponser(
 
 int main()
 {
-    // test_get_wallets();
+    test_get_wallets();
     // test_generate_wallet();
     // test_generate_and_add_key();
     // test_import_from_private_key("AON/DOXYIjxYvQ5PN5v+dR0uTGedvwSI5D8NcNWKsmcX");
@@ -163,11 +163,11 @@ int main()
     // unsigned long long amount = 1000000000;
     // test_programmable_transaction(sender, recipient, amount);
 
-    const char *sender = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
-    const char *recipient = "0xf662c23f80fbf0e613a8b2fb6c21e1eac198bb83cdeb12720b0404447ed62e3c";
-    const char *sponser = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
-    unsigned long long amount = 5400000000;
-    test_programmable_transaction_allow_sponser(sender, recipient, amount, sponser);
+    // const char *sender = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
+    // const char *recipient = "0xf662c23f80fbf0e613a8b2fb6c21e1eac198bb83cdeb12720b0404447ed62e3c";
+    // const char *sponser = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
+    // unsigned long long amount = 5400000000;
+    // test_programmable_transaction_allow_sponser(sender, recipient, amount, sponser);
 
     return 0;
 }

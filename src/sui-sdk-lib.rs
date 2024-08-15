@@ -28,16 +28,15 @@ use multisig::{
     _sign_and_execute_transaction, create_sui_transaction, get_or_create_multisig_public_key,
 };
 
-use std::collections::HashMap;
-use transactions::request_tokens_from_faucet;
-use transactions::{_programmable_transaction, _programmable_transaction_allow_sponser};
-use wallet::Wallet;
-mod event_api;
-use event_api::_event_api;
 use once_cell::sync::OnceCell;
+use std::collections::HashMap;
 use sui_client::{connect_devnet, connect_localnet, connect_testnet};
 use sui_json_rpc_types::Balance;
 use tokio::sync::Mutex;
+use transactions::{
+    _programmable_transaction, _programmable_transaction_allow_sponser, request_tokens_from_faucet,
+};
+use wallet::Wallet;
 
 #[derive(Clone)]
 pub enum SuiEnvironment {
@@ -846,20 +845,6 @@ pub extern "C" fn coin_read_api() -> i32 {
     // Block on the async function and translate the Result to a C-friendly format.
     rt.block_on(async {
         match _coin_read_api().await {
-            Ok(_) => 0,  // Return 0 to indicate success.
-            Err(_) => 1, // Return 1 or other error codes to indicate an error.
-        }
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn event_api() -> i32 {
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        match _event_api().await {
             Ok(_) => 0,  // Return 0 to indicate success.
             Err(_) => 1, // Return 1 or other error codes to indicate an error.
         }
