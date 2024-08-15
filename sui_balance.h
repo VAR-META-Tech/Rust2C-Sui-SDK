@@ -27,12 +27,12 @@ extern "C"
     // Define the C struct for Coin
     typedef struct
     {
-        char * coin_type;
-        char * coin_object_id;
+        char *coin_type;
+        char *coin_object_id;
         uint64_t version;
-        char * digest;
+        char *digest;
         uint64_t balance;
-        char * previous_transaction;
+        char *previous_transaction;
     } CCoin;
 
     // Define the C struct for an array of CCoin
@@ -45,9 +45,9 @@ extern "C"
     extern BalanceArray get_balances(const char *address);
     extern BalanceArray get_all_balances_sync(const char *address);
     extern void free_balance_array(BalanceArray balance_array);
-    Balance get_balance_sync(const char *address);
-    void free_balance(Balance balance);
-    uint64_t get_total_supply_sync();
+    extern Balance get_balance_sync(const char *address);
+    extern void free_balance(Balance balance);
+    extern uint64_t get_total_supply_sync();
     extern CCoinArray get_coins_sync(const char *address);
     extern void free_coin_array(CCoinArray coins);
 
@@ -56,4 +56,3 @@ extern "C"
 #endif
 
 #endif // SUI_BALANCE_H
- 

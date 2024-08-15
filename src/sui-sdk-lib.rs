@@ -31,8 +31,8 @@ use multisig::{
 };
 
 use std::collections::HashMap;
-use transactions::{request_tokens_from_faucet, ProgrammableTransactionAllowSponser};
 use transactions::ProgrammableTransaction;
+use transactions::{request_tokens_from_faucet, ProgrammableTransactionAllowSponser};
 use wallet::Wallet;
 mod event_api;
 use event_api::_event_api;
@@ -188,34 +188,45 @@ pub struct WalletList {
 
 #[no_mangle]
 pub extern "C" fn get_wallets() -> WalletList {
-    let wallets = wallet::get_wallets().unwrap();
+    match wallet::get_wallets() {
+        Ok(wallets) => {
+            let mut wallets = wallets.into_boxed_slice();
+            let wallet_ptr = wallets.as_mut_ptr();
+            let length = wallets.len();
+            std::mem::forget(wallets); // Prevent the memory from being dropped
 
-    let mut wallets = wallets.into_boxed_slice();
-    let wallet_ptr = wallets.as_mut_ptr();
-    let length = wallets.len();
-    std::mem::forget(wallets);
-
-    WalletList {
-        wallets: wallet_ptr,
-        length,
+            WalletList {
+                wallets: wallet_ptr,
+                length,
+            }
+        }
+        Err(_e) => {
+            // Return an empty WalletList to signify an error
+            WalletList {
+                wallets: ptr::null_mut(),
+                length: 0,
+            }
+        }
     }
 }
 
 #[no_mangle]
 pub extern "C" fn free_wallet_list(wallet_list: WalletList) {
-    unsafe {
-        let wallets =
-            Vec::from_raw_parts(wallet_list.wallets, wallet_list.length, wallet_list.length);
-        for mut wallet in wallets {
-            wallet.free();
+    if !wallet_list.wallets.is_null() {
+        // Convert the pointer back into a Box to drop it
+        unsafe {
+            let _ = Box::from_raw(wallet_list.wallets);
         }
     }
 }
+
 #[no_mangle]
 pub extern "C" fn free_wallet(wallet: *mut Wallet) {
     if !wallet.is_null() {
-        let mut wallet = unsafe { Box::from_raw(wallet) };
-        wallet.free();
+        // Convert the pointer back into a Box to drop it
+        unsafe {
+            let _ = Box::from_raw(wallet);
+        }
     }
 }
 
@@ -241,9 +252,62 @@ pub extern "C" fn generate_wallet(
 
 #[no_mangle]
 pub extern "C" fn generate_and_add_key() -> *mut Wallet {
-    let wallet = wallet::generate_and_add_key().unwrap();
-    Box::into_raw(Box::new(wallet))
+    match wallet::generate_and_add_key() {
+        Ok(wallet) => Box::into_raw(Box::new(wallet)),
+        Err(_) => std::ptr::null_mut(),
+    }
 }
+
+#[no_mangle]
+pub extern "C" fn import_from_private_key(key_base64: *const c_char) {
+    let c_str = unsafe {
+        assert!(!key_base64.is_null());
+        CStr::from_ptr(key_base64)
+    };
+    let key_base64_str = match c_str.to_str() {
+        Ok(s) => s,
+        Err(_) => return, // Early return if UTF-8 conversion fails
+    };
+
+    let _ = wallet::import_from_private_key(key_base64_str);
+}
+
+#[no_mangle]
+pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char) -> *mut c_char {
+    let c_str = unsafe {
+        assert!(!mnemonic.is_null());
+        CStr::from_ptr(mnemonic)
+    };
+    let mnemonic_str = match c_str.to_str() {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(), // Return NULL if UTF-8 conversion fails
+    };
+
+    match wallet::import_from_mnemonic(mnemonic_str) {
+        Ok(address) => CString::new(address).unwrap().into_raw(),
+        Err(_) => ptr::null_mut(), // Return NULL if import fails
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_wallet_from_address(address: *const c_char) -> *mut Wallet {
+    // Safely convert the C string to a Rust string
+    let c_str = unsafe {
+        assert!(!address.is_null());
+        CStr::from_ptr(address)
+    };
+    let address_str = match c_str.to_str() {
+        Ok(s) => s,
+        Err(_) => return std::ptr::null_mut(), // Return NULL if UTF-8 conversion fails
+    };
+
+    // Try to get the wallet from the address
+    match wallet::get_wallet_from_address(address_str) {
+        Ok(wallet) => Box::into_raw(Box::new(wallet)), // Return a pointer to the Wallet on success
+        Err(_) => std::ptr::null_mut(),                // Return NULL if wallet retrieval fails
+    }
+}
+
 #[repr(C)]
 pub struct CSuiObjectData {
     object_id: *mut c_char,
@@ -324,37 +388,6 @@ impl CSuiObjectData {
 pub struct CSuiObjectDataArray {
     data: *mut CSuiObjectData,
     len: usize,
-}
-#[no_mangle]
-pub extern "C" fn get_wallet_from_address(address: *const c_char) -> *mut Wallet {
-    let c_str = unsafe {
-        assert!(!address.is_null());
-        CStr::from_ptr(address)
-    };
-    let address_str = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let wallet = wallet::get_wallet_from_address(address_str).unwrap();
-    Box::into_raw(Box::new(wallet))
-}
-
-#[no_mangle]
-pub extern "C" fn import_from_private_key(key_base64: *const c_char) {
-    let c_str = unsafe {
-        assert!(!key_base64.is_null());
-        CStr::from_ptr(key_base64)
-    };
-    let key_base64_str = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let _ = wallet::import_from_private_key(key_base64_str);
-}
-
-#[no_mangle]
-pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char) -> *mut c_char {
-    let c_str = unsafe {
-        assert!(!mnemonic.is_null());
-        CStr::from_ptr(mnemonic)
-    };
-    let mnemonic_str = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let _address = wallet::import_from_mnemonic(mnemonic_str).unwrap();
-    CString::new(_address).unwrap().into_raw()
 }
 
 // Struct to hold C-compatible string array

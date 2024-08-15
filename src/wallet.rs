@@ -1,24 +1,13 @@
 use anyhow::{anyhow, Ok};
-use serde_test::Configure;
+use fastcrypto::traits::EncodeDecodeBase64;
 use std::ffi::{c_char, CStr, CString};
-use std::fmt::Debug;
 use std::path::PathBuf;
-use std::ptr::null;
+use std::ptr;
 use std::str::FromStr;
-use std::{fs, ptr};
-
-use fastcrypto::hash::HashFunction;
-use fastcrypto::traits::{EncodeDecodeBase64, KeyPair};
-use rand::Error;
 use sui_keys::key_derive::generate_new_key;
-use tempfile::TempDir;
-
-use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, InMemKeystore, Keystore};
-use sui_types::crypto::{DefaultHash, PublicKey, SignatureScheme, SuiKeyPair, SuiSignatureInner};
-use sui_types::{
-    base_types::{SuiAddress, SUI_ADDRESS_LENGTH},
-    crypto::Ed25519SuiSignature,
-};
+use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
+use sui_types::base_types::SuiAddress;
+use sui_types::crypto::{SignatureScheme, SuiKeyPair};
 
 #[repr(C)]
 pub struct Wallet {
@@ -105,23 +94,23 @@ impl Wallet {
     pub fn free(&mut self) {
         unsafe {
             if !self.address.is_null() {
-                CString::from_raw(self.address);
+                let _ = CString::from_raw(self.address);
                 self.address = ptr::null_mut();
             }
             if !self.mnemonic.is_null() {
-                CString::from_raw(self.mnemonic);
+                let _ = CString::from_raw(self.mnemonic);
                 self.mnemonic = ptr::null_mut();
             }
             if !self.public_base64_key.is_null() {
-                CString::from_raw(self.public_base64_key);
+                let _ = CString::from_raw(self.public_base64_key);
                 self.public_base64_key = ptr::null_mut();
             }
             if !self.private_key.is_null() {
-                CString::from_raw(self.private_key);
+                let _ = CString::from_raw(self.private_key);
                 self.private_key = ptr::null_mut();
             }
             if !self.key_scheme.is_null() {
-                CString::from_raw(self.key_scheme);
+                let _ = CString::from_raw(self.key_scheme);
                 self.key_scheme = ptr::null_mut();
             }
         }
@@ -137,14 +126,14 @@ pub fn default_keystore_path() -> PathBuf {
 
 pub fn get_addresses() {
     let keystore_path = default_keystore_path();
-    let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
+    let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let addresses = keystore.addresses();
     println!("addresses {:?}", addresses);
 }
 
 pub fn get_keys() {
     let keystore_path = default_keystore_path();
-    let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
+    let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let keys = keystore.keys();
     println!("keys {:?}", keys);
 }
@@ -157,7 +146,6 @@ pub fn get_wallets() -> Result<Vec<Wallet>, anyhow::Error> {
     for address in addresses.iter() {
         wallets.push(get_wallet_from_address(address.to_string().as_str()).unwrap())
     }
-
     Ok(wallets)
 }
 
@@ -175,7 +163,6 @@ pub fn generate_and_add_key() -> Result<Wallet, anyhow::Error> {
 pub fn import_from_mnemonic(mnemonic: &str) -> Result<String, anyhow::Error> {
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-
     let _sui_addresss = keystore
         .import_from_mnemonic(mnemonic, SignatureScheme::ED25519, None)
         .unwrap();
@@ -184,7 +171,6 @@ pub fn import_from_mnemonic(mnemonic: &str) -> Result<String, anyhow::Error> {
 }
 
 pub fn import_from_private_key(key_base64: &str) -> Result<(), anyhow::Error> {
-    println!("Private Key: {}", key_base64);
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let key_pair = SuiKeyPair::decode_base64(key_base64).map_err(|_| anyhow!("Invalid base64"))?;
@@ -195,21 +181,13 @@ pub fn import_from_private_key(key_base64: &str) -> Result<(), anyhow::Error> {
 pub fn get_wallet_from_address(address: &str) -> Result<Wallet, anyhow::Error> {
     let keystore_path = default_keystore_path();
     let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-
     let address = SuiAddress::from_str(address)?;
     let key = keystore.get_key(&address)?;
-
     let scheme = match key {
         SuiKeyPair::Ed25519(_) => SignatureScheme::ED25519,
         SuiKeyPair::Secp256k1(_) => SignatureScheme::Secp256k1,
         SuiKeyPair::Secp256r1(_) => SignatureScheme::Secp256r1,
     };
-    println!("address: {}", address.to_string());
-    println!("pub: {}", key.public().encode_base64());
-    println!("pri: {}", key.encode_base64());
-    println!("pri: {}", scheme.to_string());
-
-    // Print the scheme
     Ok(Wallet::new(
         Some(address.to_string()),
         None,
@@ -243,3 +221,4 @@ pub fn generate_new(key_scheme: &str, word_length: &str) -> Result<Wallet, anyho
         generate_new_key(scheme, None, Some(_word_length.to_string()))?;
     Ok(Wallet::from_generate_result(address, kp, scheme, phrase))
 }
+

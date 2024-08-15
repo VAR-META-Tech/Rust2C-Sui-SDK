@@ -30,9 +30,9 @@ extern "C"
     } WalletList;
 
     // Declare the functions from the Rust library
-    WalletList get_wallets();
-    void free_wallet_list(WalletList wallet_list);
-    extern Wallet * generate_wallet(const char *key_scheme, const char *word_length);
+    extern WalletList get_wallets();
+    extern void free_wallet_list(WalletList wallet_list);
+    extern Wallet *generate_wallet(const char *key_scheme, const char *word_length);
     extern Wallet *generate_and_add_key();
     extern Wallet *get_wallet_from_address(const char *address);
     extern void free_wallet(Wallet *wallet);

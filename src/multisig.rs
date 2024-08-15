@@ -1,14 +1,8 @@
 use super::SuiClientSingleton;
-
-use std::str::FromStr;
-use std::{ffi::c_char, path::PathBuf};
-
-use anyhow::{anyhow, Ok};
-use fastcrypto::encoding::Encoding;
-use fastcrypto::hash::HashFunction;
-use rand::{rngs::StdRng, SeedableRng};
-use serde::Serialize;
+use anyhow::Ok;
 use shared_crypto::intent::{Intent, IntentMessage};
+use std::path::PathBuf;
+use std::str::FromStr;
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     rpc_types::SuiTransactionBlockResponseOptions,
@@ -16,18 +10,13 @@ use sui_sdk::{
         programmable_transaction_builder::ProgrammableTransactionBuilder,
         transaction::TransactionData,
     },
-    SuiClientBuilder,
 };
-use sui_types::crypto::{PublicKey, Signer};
-use sui_types::crypto::{SignableBytes, ToFromBytes};
-use sui_types::crypto::{Signature, SuiSignature};
+use sui_types::base_types::SuiAddress;
+use sui_types::crypto::PublicKey;
+use sui_types::crypto::Signature;
 use sui_types::multisig::{MultiSig, MultiSigPublicKey, WeightUnit};
 use sui_types::signature::GenericSignature;
 use sui_types::transaction::{Argument, Command, Transaction};
-use sui_types::{
-    base_types::SuiAddress,
-    crypto::{get_key_pair_from_rng, SuiKeyPair},
-};
 
 pub fn default_keystore_path() -> PathBuf {
     match dirs::home_dir() {
@@ -151,39 +140,5 @@ pub async fn _sign_and_execute_transaction(
         "Transaction executed. Transaction digest: {}",
         transaction_response.digest.base58_encode()
     );
-    Ok(())
-}
-
-pub async fn multisig_transaction() -> Result<(), anyhow::Error> {
-    let multisig_pk = get_or_create_multisig_public_key(
-        vec![
-            "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd",
-            "0x2691bf90af73ce452f71ef081c1d8f00a9d8a3506101c5def54f6bed8c1be733",
-            "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75",
-        ],
-        vec![1, 1, 1],
-        2,
-    )
-    .await?;
-    let multisig_addr = SuiAddress::from(&multisig_pk);
-    let bytes = bcs::to_bytes(&multisig_pk)?;
-    println!("Vec<u8>: {:?}", bytes);
-    let tx_data = create_sui_transaction(
-        multisig_addr.to_string().as_str(),
-        "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75",
-        51240000000,
-    )
-    .await?;
-
-    let _ = _sign_and_execute_transaction(
-        bcs::to_bytes(&tx_data)?,
-        vec![
-            "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd",
-            "0x2691bf90af73ce452f71ef081c1d8f00a9d8a3506101c5def54f6bed8c1be733",
-        ],
-        bcs::to_bytes(&multisig_pk)?,
-    )
-    .await?;
-
     Ok(())
 }
