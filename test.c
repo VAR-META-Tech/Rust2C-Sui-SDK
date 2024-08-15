@@ -109,6 +109,46 @@ void test_get_wallet_from_address(const char *address)
     }
 }
 
+void test_programmable_transaction(const char *sender, const char *recipient, unsigned long long amount)
+{
+    // Call the Rust function
+    const char *result = programmable_transaction(sender, recipient, amount);
+
+    // Print the result
+    if (result != NULL)
+    {
+        printf("Result: %s\n", result);
+        // Free the result after use
+        free((void *)result);
+    }
+    else
+    {
+        printf("An unexpected error occurred.\n");
+    }
+}
+
+void test_programmable_transaction_allow_sponser(
+    const char *sender,
+    const char *recipient,
+    unsigned long long amount,
+    const char *sponser)
+{
+    // Call the Rust function
+    const char *result = programmable_transaction_allow_sponser(sender, recipient, amount, sponser);
+
+    // Print the result
+    if (result != NULL)
+    {
+        printf("Result: %s\n", result);
+        // Free the result after use
+        free((void *)result);
+    }
+    else
+    {
+        printf("An unexpected error occurred.\n");
+    }
+}
+
 int main()
 {
     // test_get_wallets();
@@ -117,6 +157,17 @@ int main()
     // test_import_from_private_key("AON/DOXYIjxYvQ5PN5v+dR0uTGedvwSI5D8NcNWKsmcX");
     // test_import_from_mnemonic("urban blue h awk lecture clerk power craft episode bulk barrel venture almost");
     // test_get_wallet_from_address("0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc");
+
+    // const char *sender = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
+    // const char *recipient = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
+    // unsigned long long amount = 1000000000;
+    // test_programmable_transaction(sender, recipient, amount);
+
+    const char *sender = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
+    const char *recipient = "0xf662c23f80fbf0e613a8b2fb6c21e1eac198bb83cdeb12720b0404447ed62e3c";
+    const char *sponser = "0x66e350a92a4ddf98906f4ae1a208a23e40047105f470c780d2d6bec139031f75";
+    unsigned long long amount = 5400000000;
+    test_programmable_transaction_allow_sponser(sender, recipient, amount, sponser);
 
     return 0;
 }

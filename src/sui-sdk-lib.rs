@@ -1,5 +1,5 @@
+use anyhow::{anyhow, Result};
 use nfts::{_get_wallet_objects, _mint, _transfer_nft};
-use serde::de;
 use std::ffi::{c_char, c_int, CString};
 use std::ffi::{c_uchar, c_uint, CStr};
 use std::{ptr, slice};
@@ -8,10 +8,8 @@ use sui_client::{
 };
 use sui_json_rpc_types::{Page, SuiData, SuiObjectData};
 use sui_sdk::{SuiClient, SuiClientBuilder};
-// Import the necessary crates
-use anyhow::{anyhow, Result};
 use sui_types::base_types::SuiAddress;
-use tokio::runtime; // Using Tokio as the async runtime
+use tokio::runtime;
 
 mod balance;
 mod coin_read_api;
@@ -31,8 +29,8 @@ use multisig::{
 };
 
 use std::collections::HashMap;
-use transactions::ProgrammableTransaction;
-use transactions::{request_tokens_from_faucet, ProgrammableTransactionAllowSponser};
+use transactions::request_tokens_from_faucet;
+use transactions::{_programmable_transaction, _programmable_transaction_allow_sponser};
 use wallet::Wallet;
 mod event_api;
 use event_api::_event_api;
@@ -1192,18 +1190,24 @@ pub extern "C" fn programmable_transaction(
     recipient_address: *const c_char,
     amount: u64,
 ) -> *const c_char {
-    let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
+    // Convert C strings to Rust strings
+    let sender = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address).to_string_lossy().to_string()
+    };
     let recipient = unsafe {
+        assert!(!recipient_address.is_null());
         CStr::from_ptr(recipient_address)
             .to_string_lossy()
             .to_string()
     };
 
-    // Here we run the async block synchronously for simplicity
+    // Run the async function synchronously
     let result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(async move { ProgrammableTransaction(&sender, &recipient, amount).await });
+        .block_on(async move { _programmable_transaction(&sender, &recipient, amount).await });
 
+    // Return the result as a C string
     match result {
         Ok(_) => CString::new("Transaction completed successfully")
             .unwrap()
@@ -1219,30 +1223,39 @@ pub extern "C" fn programmable_transaction_allow_sponser(
     amount: u64,
     sponser_address: *const c_char,
 ) -> *const c_char {
-    let sender = unsafe { CStr::from_ptr(sender_address).to_string_lossy().to_string() };
-    let sponser = unsafe {
-        CStr::from_ptr(sponser_address)
-            .to_string_lossy()
-            .to_string()
+    // Convert C strings to Rust strings
+    let sender = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address).to_string_lossy().to_string()
     };
     let recipient = unsafe {
+        assert!(!recipient_address.is_null());
         CStr::from_ptr(recipient_address)
             .to_string_lossy()
             .to_string()
     };
+    let sponser = unsafe {
+        assert!(!sponser_address.is_null());
+        CStr::from_ptr(sponser_address)
+            .to_string_lossy()
+            .to_string()
+    };
 
-    // Here we run the async block synchronously for simplicity
+    // Run the async function synchronously
     let result = tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(async move {
-            ProgrammableTransactionAllowSponser(&sender, &recipient, amount, &sponser).await
+            _programmable_transaction_allow_sponser(&sender, &recipient, amount, &sponser).await
         });
 
+    // Return the result as a C string
     match result {
         Ok(_) => CString::new("Transaction completed successfully")
-            .unwrap()
-            .into_raw(),
-        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+            .map(|cstr| cstr.into_raw())
+            .unwrap_or(std::ptr::null_mut()),
+        Err(e) => CString::new(format!("Error: {}", e))
+            .map(|cstr| cstr.into_raw())
+            .unwrap_or(std::ptr::null_mut()),
     }
 }
 

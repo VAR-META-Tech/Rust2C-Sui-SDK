@@ -26,21 +26,8 @@ struct FaucetResponse {
     task: String,
     error: Option<String>,
 }
-// This example shows how to use programmable transactions to chain multiple
-// actions into one transaction. Specifically, the example retrieves two addresses
-// from the local wallet, and then
-// 1) finds a coin from the active address that has Sui,
-// 2) splits the coin into one coin of 1000 MIST and the rest,
-// 3  transfers the split coin to second Sui address,
-// 4) signs the transaction,
-// 5) executes it.
-// For some of these actions it prints some output.
-// Finally, at the end of the program it prints the number of coins for the
-// Sui address that received the coin.
-// If you run this program several times, you should see the number of coins
-// for the recipient address increases.
 
-pub async fn ProgrammableTransaction(
+pub async fn _programmable_transaction(
     senderaddress: &str,
     recipientaddress: &str,
     amount: u64,
@@ -123,7 +110,7 @@ pub async fn ProgrammableTransaction(
     Ok(())
 }
 
-pub async fn ProgrammableTransactionAllowSponser(
+pub async fn _programmable_transaction_allow_sponser(
     senderaddress: &str,
     recipientaddress: &str,
     amount: u64,
