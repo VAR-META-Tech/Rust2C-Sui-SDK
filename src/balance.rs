@@ -1,4 +1,4 @@
-use super::SuiClientSingleton;
+use crate::sui_client::SuiClientSingleton;
 use std::str::FromStr;
 
 use anyhow::{Ok, Result};

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{str::FromStr, time::Duration};
-
 use anyhow::bail;
 use futures::{future, stream::StreamExt};
 use sui_config::{

@@ -1,7 +1,11 @@
-use super::SuiClientSingleton;
-use anyhow::Ok;
+use crate::c_types;
+use crate::sui_client::SuiClientSingleton;
+use std::result::Result::Ok;
 use shared_crypto::intent::{Intent, IntentMessage};
-use std::path::PathBuf;
+use tokio::runtime;
+use core::slice;
+use std::ffi::{c_uint, CStr, CString};
+use std::{ffi::c_char, path::PathBuf};
 use std::str::FromStr;
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
@@ -141,4 +145,92 @@ pub async fn _sign_and_execute_transaction(
         transaction_response.digest.base58_encode()
     );
     Ok(())
+}
+
+//public function for ffi
+
+
+#[repr(C)]
+pub struct CMultiSig {
+    address: *const c_char,
+    bytes: c_types::CU8Array,
+    error: *const c_char,
+}
+
+#[no_mangle]
+pub extern "C" fn free_multisig(multisig: CMultiSig) {
+    unsafe {
+        if !multisig.address.is_null() {
+            let _ = CString::from_raw(multisig.address as *mut c_char);
+        }
+        if !multisig.error.is_null() {
+            let _ = CString::from_raw(multisig.error as *mut c_char);
+        }
+        if !multisig.bytes.data.is_null() {
+            let _ = Box::from_raw(slice::from_raw_parts_mut(
+                multisig.bytes.data as *mut u8,
+                multisig.bytes.len as usize,
+            ));
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_or_create_multisig(
+    addresses: c_types::CStringArray,
+    weights: c_types::CU8Array,
+    threshold: u16,
+) -> CMultiSig {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        let addresses: Vec<&str> = unsafe {
+            (0..addresses.len)
+                .map(|i| {
+                    let c_str = CStr::from_ptr(*addresses.data.add(i as usize));
+                    c_str.to_str().expect("Invalid UTF-8")
+                })
+                .collect()
+        };
+        let weights: Vec<u8> =
+            unsafe { slice::from_raw_parts(weights.data, weights.len as usize).to_vec() };
+
+        match get_or_create_multisig_public_key(addresses, weights, threshold).await {
+            Ok(multisig_pk) => {
+                let bytes = bcs::to_bytes(&multisig_pk).unwrap();
+                println!("Vec<u8> in Rust: {:?}", bytes);
+
+                let boxed_bytes = bytes.into_boxed_slice();
+                let data_ptr = boxed_bytes.as_ptr();
+                let len = boxed_bytes.len() as c_uint;
+
+                // Leak the boxed slice to keep it alive
+                std::mem::forget(boxed_bytes);
+                CMultiSig {
+                    bytes: c_types::CU8Array {
+                        data: data_ptr,
+                        len: len,
+                        error: std::ptr::null(),
+                    },
+                    address: CString::new(SuiAddress::from(&multisig_pk).to_string())
+                        .unwrap()
+                        .into_raw(),
+                    error: std::ptr::null(),
+                }
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap().into_raw();
+                CMultiSig {
+                    bytes: c_types::CU8Array {
+                        data: std::ptr::null(),
+                        len: 0,
+                        error: std::ptr::null(),
+                    },
+                    address: std::ptr::null(),
+                    error: error_message,
+                }
+            }
+        }
+    })
 }

@@ -1,5 +1,4 @@
-use super::SuiClientSingleton;
-
+use crate::sui_client::SuiClientSingleton;
 use anyhow::Result;
 use anyhow::{anyhow, Ok};
 use move_core_types::language_storage::StructTag;

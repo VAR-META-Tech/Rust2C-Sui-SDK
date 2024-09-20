@@ -57,4 +57,4 @@ rand = "0.8.5"
 [lib]
 name = "sui_rust_sdk"
 crate-type = ["staticlib", "cdylib"]
-path = "src/sui-sdk-lib.rs"
+path = "src/sui_sdk_lib.rs"
