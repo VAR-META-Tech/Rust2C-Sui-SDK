@@ -101,12 +101,19 @@ void test_programable_transactionbuilder(){
     CProgrammableTransactionBuilder* builder = create_builder();
     assert(builder != NULL);
 
-    unsigned long long amount = 1000000000;
+    // 
+    CAgruments* coin = create_arguments();
+    add_argument_gas_coin(coin);
+
+    CAgruments* amount = create_arguments();
+    add_argument_result(amount, (uint16_t)10000000);
     
-    add_split_coins_command(builder, amount);
+    add_split_coins_command(builder, coin, amount);
 
     // Add a transfer object command
-    add_transfer_object_command(builder, RECIPIENT_ADDRESS);
+    CAgruments* agrument = create_arguments();
+    add_argument_result(agrument,0);
+    add_transfer_object_command(builder, agrument, RECIPIENT_ADDRESS);
 
     // Execute the builder
     const char* result = execute_transaction(builder, SENDER_ADDRESS);

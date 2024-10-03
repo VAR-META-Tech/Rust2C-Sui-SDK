@@ -3,7 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct CAgruments CAgruments;
+
 typedef struct CProgrammableTransactionBuilder CProgrammableTransactionBuilder;
+
+typedef struct CTypeTags CTypeTags;
 
 typedef struct CStringArray {
   const char *const *data;
@@ -189,11 +193,41 @@ struct Wallet *get_wallet_from_address(const char *address);
 
 struct CSuiObjectDataArray get_wallet_objects(const char *address, const char *object_type);
 
+struct CTypeTags *create_type_tags(void);
+
+void add_type_tag(struct CTypeTags *type_tags, const char *tag);
+
+void destroy_type_tags(struct CTypeTags *type_tags);
+
+struct CAgruments *create_arguments(void);
+
+void destroy_arguments(struct CAgruments *arguments);
+
+void add_argument_gas_coin(struct CAgruments *arguments);
+
+void add_argument_result(struct CAgruments *arguments, uint16_t value);
+
+void add_argument_input(struct CAgruments *arguments, uint16_t value);
+
+void add_argument_nested_result(struct CAgruments *arguments, uint16_t value1, uint16_t value2);
+
 struct CProgrammableTransactionBuilder *create_builder(void);
 
+void destroy_builder(struct CProgrammableTransactionBuilder *builder);
+
+void add_move_call_command(struct CProgrammableTransactionBuilder *builder,
+                           const char *package,
+                           const char *module,
+                           const char *function,
+                           struct CTypeTags *type_arguments,
+                           struct CAgruments *arguments);
+
 void add_transfer_object_command(struct CProgrammableTransactionBuilder *builder,
+                                 struct CAgruments *agreements,
                                  const char *recipient);
 
-void add_split_coins_command(struct CProgrammableTransactionBuilder *builder, uint64_t amount);
+void add_split_coins_command(struct CProgrammableTransactionBuilder *builder,
+                             struct CAgruments *coin,
+                             struct CAgruments *agreements);
 
 char *execute_transaction(struct CProgrammableTransactionBuilder *builder, const char *sender);
