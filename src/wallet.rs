@@ -262,7 +262,16 @@ pub extern "C" fn import_from_private_key(key_base64: *const c_char) -> *mut Imp
 
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-    let key_pair = SuiKeyPair::decode_base64(key_base64_str.to_str().unwrap_or("")).unwrap();
+    let key_pair = match SuiKeyPair::decode_base64(key_base64_str.to_str().unwrap_or("")) {
+        result::Result::Ok(key_pair) => key_pair,
+        Err(err) => {
+            return Box::into_raw(Box::new(ImportResult {
+                status: ResultStatus::Error as c_int,
+                address: Wallet::string_to_c_char(None),
+                error: Wallet::string_to_c_char(Some(err.to_string())),
+            }));
+        }
+    };
     //get address from keypair
     let address = SuiAddress::from(&key_pair.public());
     let result = keystore.add_key(None, key_pair);

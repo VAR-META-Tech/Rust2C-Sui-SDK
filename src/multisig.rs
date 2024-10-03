@@ -1,4 +1,4 @@
-use crate::c_types;
+use crate::c_types::{self, CStringArray, CU8Array};
 use crate::sui_client::SuiClientSingleton;
 use std::result::Result::Ok;
 use shared_crypto::intent::{Intent, IntentMessage};
@@ -230,6 +230,40 @@ pub extern "C" fn get_or_create_multisig(
                     address: std::ptr::null(),
                     error: error_message,
                 }
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn sign_and_execute_transaction_miltisig(
+    multisig: CU8Array,
+    tx: CU8Array,
+    addresses: CStringArray,
+) -> *const c_char {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        let addresses: Vec<&str> = unsafe {
+            (0..addresses.len)
+                .map(|i| {
+                    let c_str = CStr::from_ptr(*addresses.data.add(i as usize));
+                    c_str.to_str().expect("Invalid UTF-8")
+                })
+                .collect()
+        };
+        let tx: Vec<u8> = unsafe { slice::from_raw_parts(tx.data, tx.len as usize).to_vec() };
+        let multisig: Vec<u8> =
+            unsafe { slice::from_raw_parts(multisig.data, multisig.len as usize).to_vec() };
+        match _sign_and_execute_transaction(tx, addresses, multisig).await {
+            Ok(()) => {
+                let success_message = CString::new("Sign and execute transaction success").unwrap();
+                success_message.into_raw() // Return the raw pointer to the C string
+            }
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap();
+                error_message.into_raw() // Return the raw pointer to the C string
             }
         }
     })

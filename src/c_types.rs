@@ -164,3 +164,144 @@ pub extern "C" fn free_error_string(error: *const c_char) {
         }
     }
 }
+
+#[no_mangle]
+pub extern "C" fn bsc_basic(type_: *const c_char, data: *const c_char) -> CU8Array {
+    let type_str = unsafe { CStr::from_ptr(type_).to_string_lossy() };
+    let data_str = unsafe { CStr::from_ptr(data).to_string_lossy() };
+    let result = match type_str.as_ref() {
+        "u8" => {
+            let value = data_str.parse::<u8>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "u64" => {
+            let value = data_str.parse::<u64>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "u128" => {
+            let value = data_str.parse::<u128>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        // "u256" => {
+        //     let value = data_str.parse::<u256>().unwrap();
+        //     let bytes = bcs::to_bytes(&value).unwrap();
+        //     CU8Array {
+        //         data: bytes.as_ptr(),
+        //         len: bytes.len() as c_uint,
+        //         error: std::ptr::null(),
+        //     }
+        // }
+        "i8" => {
+            let value = data_str.parse::<i8>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "i64" => {
+            let value = data_str.parse::<i64>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "i128" => {
+            let value = data_str.parse::<i128>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "f32" => {
+            let value = data_str.parse::<f32>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "f64" => {
+            let value = data_str.parse::<f64>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "bool" => {
+            let value = data_str.parse::<bool>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "uleb128" => {
+            let value = data_str.parse::<u128>().unwrap();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        "string" => {
+            let value = data_str.to_string();
+            let bytes = bcs::to_bytes(&value).unwrap();
+            CU8Array {
+                data: bytes.as_ptr(),
+                len: bytes.len() as c_uint,
+                error: std::ptr::null(),
+            }
+        }
+        _ => CU8Array {
+            data: std::ptr::null(),
+            len: 0,
+            error: CString::new("Invalid type").unwrap().into_raw(),
+        },
+    };
+    result
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct CByteVector {
+    pub data: *mut u8,
+    pub size: usize,
+    pub capacity: usize,
+}
+
+impl From<Vec<u8>> for CByteVector {
+    fn from(vec: Vec<u8>) -> Self {
+        let mut boxed_vec = vec.into_boxed_slice();
+        let data = boxed_vec.as_mut_ptr();
+        let size = boxed_vec.len();
+        let capacity = boxed_vec.len();
+        std::mem::forget(boxed_vec);
+        CByteVector { data, size, capacity }
+    }
+}

@@ -3,6 +3,37 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct CProgrammableTransactionBuilder CProgrammableTransactionBuilder;
+
+typedef struct CStringArray {
+  const char *const *data;
+  int len;
+} CStringArray;
+
+typedef struct CSuiObjectData {
+  char *object_id;
+  uint64_t version;
+  char *digest;
+  char *type_;
+  char *owner;
+  char *previous_transaction;
+  uint64_t storage_rebate;
+  char *display;
+  char *content;
+  char *bcs;
+} CSuiObjectData;
+
+typedef struct CSuiObjectDataArray {
+  struct CSuiObjectData *data;
+  uintptr_t len;
+} CSuiObjectDataArray;
+
+typedef struct CU8Array {
+  const unsigned char *data;
+  unsigned int len;
+  const char *error;
+} CU8Array;
+
 typedef struct CBalance {
   const char *coin_type;
   uintptr_t coin_object_count;
@@ -28,22 +59,11 @@ typedef struct CCoinArray {
   uintptr_t length;
 } CCoinArray;
 
-typedef struct CU8Array {
-  const unsigned char *data;
-  unsigned int len;
-  const char *error;
-} CU8Array;
-
 typedef struct CMultiSig {
   const char *address;
   struct CU8Array bytes;
   const char *error;
 } CMultiSig;
-
-typedef struct CStringArray {
-  const char *const *data;
-  int len;
-} CStringArray;
 
 typedef struct ResultCStringArray {
   struct CStringArray strings;
@@ -69,23 +89,13 @@ typedef struct ImportResult {
   char *error;
 } ImportResult;
 
-typedef struct CSuiObjectData {
-  char *object_id;
-  uint64_t version;
-  char *digest;
-  char *type_;
-  char *owner;
-  char *previous_transaction;
-  uint64_t storage_rebate;
-  char *display;
-  char *content;
-  char *bcs;
-} CSuiObjectData;
+void free_strings(struct CStringArray array);
 
-typedef struct CSuiObjectDataArray {
-  struct CSuiObjectData *data;
-  uintptr_t len;
-} CSuiObjectDataArray;
+void free_sui_object_data_list(struct CSuiObjectDataArray array);
+
+void free_error_string(const char *error);
+
+struct CU8Array bsc_basic(const char *type_, const char *data);
 
 int32_t coin_read_api(void);
 
@@ -111,6 +121,21 @@ struct CMultiSig get_or_create_multisig(struct CStringArray addresses,
                                         struct CU8Array weights,
                                         uint16_t threshold);
 
+const char *sign_and_execute_transaction_miltisig(struct CU8Array multisig,
+                                                  struct CU8Array tx,
+                                                  struct CStringArray addresses);
+
+const char *mint_nft(const char *package_id,
+                     const char *sender_address,
+                     const char *name,
+                     const char *description,
+                     const char *uri);
+
+const char *transfer_nft(const char *package_id,
+                         const char *sender_address,
+                         const char *nft_id,
+                         const char *recipient_address);
+
 int32_t test(void);
 
 int32_t build_testnet(void);
@@ -130,21 +155,6 @@ int32_t connect_localnet_c(void);
 int32_t connect_devnet_c(void);
 
 int32_t connect_testnet_c(void);
-
-const char *sign_and_execute_transaction(struct CU8Array multisig,
-                                         struct CU8Array tx,
-                                         struct CStringArray addresses);
-
-const char *mint_nft(const char *package_id,
-                     const char *sender_address,
-                     const char *name,
-                     const char *description,
-                     const char *uri);
-
-const char *transfer_nft(const char *package_id,
-                         const char *sender_address,
-                         const char *nft_id,
-                         const char *recipient_address);
 
 struct CU8Array create_transaction(const char *from_address,
                                    const char *to_address,
@@ -179,8 +189,11 @@ struct Wallet *get_wallet_from_address(const char *address);
 
 struct CSuiObjectDataArray get_wallet_objects(const char *address, const char *object_type);
 
-void free_strings(struct CStringArray array);
+struct CProgrammableTransactionBuilder *create_builder(void);
 
-void free_sui_object_data_list(struct CSuiObjectDataArray array);
+void add_transfer_object_command(struct CProgrammableTransactionBuilder *builder,
+                                 const char *recipient);
 
-void free_error_string(const char *error);
+void add_split_coins_command(struct CProgrammableTransactionBuilder *builder, uint64_t amount);
+
+char *execute_transaction(struct CProgrammableTransactionBuilder *builder, const char *sender);

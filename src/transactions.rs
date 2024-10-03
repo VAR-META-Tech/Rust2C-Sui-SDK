@@ -20,10 +20,10 @@ use sui_sdk::{
     },
     SuiClient, SuiClientBuilder,
 };
-use sui_types::base_types::{ObjectID, SuiAddress};
+use sui_types::{base_types::{ObjectID, SuiAddress}, executable_transaction};
 use c_types::{CU8Array, CStringArray};
 
-use crate::{c_types, multisig::{_sign_and_execute_transaction, create_sui_transaction}, nfts::{_mint, _transfer_nft}};
+use crate::{c_types, multisig::{_sign_and_execute_transaction, create_sui_transaction}, nfts::{_mint, _transfer_nft}, transaction_builder::CProgrammableTransactionBuilder};
 const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
 #[derive(serde::Deserialize)]
 struct FaucetResponse {
@@ -309,140 +309,6 @@ pub async fn fetch_coin(
 }
 
 //Public functions for FFI
-#[no_mangle]
-pub extern "C" fn sign_and_execute_transaction(
-    multisig: CU8Array,
-    tx: CU8Array,
-    addresses: CStringArray,
-) -> *const c_char {
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        let addresses: Vec<&str> = unsafe {
-            (0..addresses.len)
-                .map(|i| {
-                    let c_str = CStr::from_ptr(*addresses.data.add(i as usize));
-                    c_str.to_str().expect("Invalid UTF-8")
-                })
-                .collect()
-        };
-        let tx: Vec<u8> = unsafe { slice::from_raw_parts(tx.data, tx.len as usize).to_vec() };
-        let multisig: Vec<u8> =
-            unsafe { slice::from_raw_parts(multisig.data, multisig.len as usize).to_vec() };
-        match _sign_and_execute_transaction(tx, addresses, multisig).await {
-            Ok(()) => {
-                let success_message = CString::new("Sign and execute transaction success").unwrap();
-                success_message.into_raw() // Return the raw pointer to the C string
-            }
-            Err(e) => {
-                let error_message = CString::new(e.to_string()).unwrap();
-                error_message.into_raw() // Return the raw pointer to the C string
-            }
-        }
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn mint_nft(
-    package_id: *const c_char,
-    sender_address: *const c_char,
-    name: *const c_char,
-    description: *const c_char,
-    uri: *const c_char,
-) -> *const c_char {
-    let c_str = unsafe {
-        assert!(!package_id.is_null());
-        CStr::from_ptr(package_id)
-    };
-    let package_id = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let c_str = unsafe {
-        assert!(!sender_address.is_null());
-        CStr::from_ptr(sender_address)
-    };
-    let sender_address = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    let c_str = unsafe {
-        assert!(!name.is_null());
-        CStr::from_ptr(name)
-    };
-    let name = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    let c_str = unsafe {
-        assert!(!description.is_null());
-        CStr::from_ptr(description)
-    };
-    let description = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    let c_str = unsafe {
-        assert!(!uri.is_null());
-        CStr::from_ptr(uri)
-    };
-    let uri = c_str.to_str().unwrap_or("Invalid UTF-8");
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        match _mint(package_id, sender_address, name, description, uri).await {
-            Ok(()) => {
-                let success_message = CString::new("Mint NFT to sender success").unwrap();
-                success_message.into_raw() // Return the raw pointer to the C string
-            }
-            Err(e) => {
-                let error_message = CString::new(e.to_string()).unwrap();
-                error_message.into_raw() // Return the raw pointer to the C string
-            }
-        }
-    })
-}
-
-#[no_mangle]
-pub extern "C" fn transfer_nft(
-    package_id: *const c_char,
-    sender_address: *const c_char,
-    nft_id: *const c_char,
-    recipient_address: *const c_char,
-) -> *const c_char {
-    let c_str = unsafe {
-        assert!(!package_id.is_null());
-        CStr::from_ptr(package_id)
-    };
-    let package_id = c_str.to_str().unwrap_or("Invalid UTF-8");
-    let c_str = unsafe {
-        assert!(!sender_address.is_null());
-        CStr::from_ptr(sender_address)
-    };
-    let sender_address = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    let c_str = unsafe {
-        assert!(!nft_id.is_null());
-        CStr::from_ptr(nft_id)
-    };
-    let nft_id = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    let c_str = unsafe {
-        assert!(!recipient_address.is_null());
-        CStr::from_ptr(recipient_address)
-    };
-    let recipient_address = c_str.to_str().unwrap_or("Invalid UTF-8");
-
-    // Create a new runtime. This step might vary based on the async runtime you are using.
-    let rt = runtime::Runtime::new().unwrap();
-    // Block on the async function and translate the Result to a C-friendly format.
-    rt.block_on(async {
-        match _transfer_nft(package_id, sender_address, nft_id, recipient_address).await {
-            Ok(()) => {
-                let success_message = CString::new("Transfer NFT success").unwrap();
-                success_message.into_raw() // Return the raw pointer to the C string
-            }
-            Err(e) => {
-                let error_message = CString::new(e.to_string()).unwrap();
-                error_message.into_raw() // Return the raw pointer to the C string
-            }
-        }
-    })
-}
-
 #[no_mangle]
 pub extern "C" fn create_transaction(
     from_address: *const c_char,
