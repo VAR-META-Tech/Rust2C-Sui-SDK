@@ -144,6 +144,8 @@ const char *transfer_nft(const char *package_id,
 
 int32_t test(void);
 
+int32_t build_mainnet(void);
+
 int32_t build_testnet(void);
 
 int32_t build_devnet(void);
@@ -243,3 +245,8 @@ void add_merge_coins_command(struct CProgrammableTransactionBuilder *builder,
 char *execute_transaction(struct CProgrammableTransactionBuilder *builder,
                           const char *sender,
                           unsigned long long gas_budget);
+
+char *execute_transaction_allow_sponser(struct CProgrammableTransactionBuilder *builder,
+                                        const char *sender,
+                                        unsigned long long gas_budget,
+                                        const char *sponser);

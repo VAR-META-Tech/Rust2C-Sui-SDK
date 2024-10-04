@@ -68,6 +68,7 @@ pub async fn connect_testnet() -> Result<()> {
 pub enum SuiEnvironment {
     Testnet,
     Devnet,
+    Mainnet,
 }
 
 pub struct SuiClientSingleton {
@@ -110,6 +111,7 @@ impl SuiClientSingleton {
             let client = match environment {
                 SuiEnvironment::Testnet => SuiClientBuilder::default().build_testnet().await?,
                 SuiEnvironment::Devnet => SuiClientBuilder::default().build_devnet().await?,
+                SuiEnvironment::Mainnet => SuiClientBuilder::default().build("https://fullnode.mainnet.sui.io:443").await?,
             };
             *client_guard = Some(client.clone());
             Ok(client)
@@ -145,6 +147,35 @@ pub extern "C" fn test() -> i32 {
         }
     })
 }
+
+pub async fn _build_mainnet() -> Result<()> {
+    let sui_client_singleton = SuiClientSingleton::instance();
+
+    // Initialize environment only once
+    match sui_client_singleton
+        .initialize(SuiEnvironment::Mainnet)
+        .await
+    {
+        Ok(()) => println!("Environment initialized to Mainnet."),
+        Err(e) => eprintln!("Failed to initialize environment: {:?}", e),
+    }
+
+    Ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn build_mainnet() -> i32 {
+    // Create a new runtime. This step might vary based on the async runtime you are using.
+    let rt = runtime::Runtime::new().unwrap();
+    // Block on the async function and translate the Result to a C-friendly format.
+    rt.block_on(async {
+        match _build_mainnet().await {
+            std::result::Result::Ok(_) => 0,  // Return 0 to indicate success.
+            std::result::Result::Err(_) => 1, // Return 1 or other error codes to indicate an error.
+        }
+    })
+}
+
 
 pub async fn _build_testnet() -> Result<()> {
     let sui_client_singleton = SuiClientSingleton::instance();

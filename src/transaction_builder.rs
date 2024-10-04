@@ -267,3 +267,73 @@ pub extern "C" fn execute_transaction(
     let c_string = std::ffi::CString::new(result_str).unwrap();
     c_string.into_raw()
 }
+
+pub async fn _execute_transaction_allow_sponser(
+    sender: &str,
+    transaction_data: ProgrammableTransaction,
+    gas_budget: u64,
+    sponser: &str,
+) -> Result<(SuiTransactionBlockResponse), anyhow::Error> {
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    let sender_address = SuiAddress::from_str(sender)?;
+    let sponser_address = SuiAddress::from_str(sponser)?;
+    let coins = sui_client
+        .coin_read_api()
+        .get_coins(sender_address, None, None, None)
+        .await?;
+    let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
+    let gas_price = sui_client.read_api().get_reference_gas_price().await?;
+    // create the transaction data that will be sent to the network
+    let tx_data = TransactionData::new_programmable_allow_sponsor(
+        sender_address,
+        selected_gas_coins,
+        transaction_data,
+        gas_budget,
+        gas_price,
+        sponser_address,
+    );
+
+    // 4) sign transaction
+    let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
+    let signature = keystore.sign_secure(&sender_address, &tx_data, Intent::sui_transaction())?;
+    let sponser_signature = keystore.sign_secure(&sponser_address, &tx_data, Intent::sui_transaction())?;
+
+    // 5) execute the transaction
+    print!("Executing the transaction...");
+    let transaction_response = sui_client
+        .quorum_driver_api()
+        .execute_transaction_block(
+            Transaction::from_data(tx_data, vec![signature,sponser_signature]),
+            SuiTransactionBlockResponseOptions::full_content(),
+            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
+        )
+        .await?;
+    print!("done\n Transaction information: ");
+    //return transaction_response;
+    Ok(transaction_response)
+}
+
+#[no_mangle]
+pub extern "C" fn execute_transaction_allow_sponser(
+    builder: *mut CProgrammableTransactionBuilder,
+    sender: *const c_char,
+    gas_budget: c_ulonglong,
+    sponser: *const c_char,
+) -> *mut c_char {
+    let builder = unsafe { Box::from_raw(builder) };
+    let sender_str = unsafe { CStr::from_ptr(sender).to_str().unwrap() };
+    let sponser_str = unsafe { CStr::from_ptr(sponser).to_str().unwrap() };
+
+    let transaction_data = builder.builder.finish();
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move { _execute_transaction_allow_sponser(&sender_str, transaction_data, gas_budget,&sponser_str).await });
+
+    let result_str = match result {
+        Ok(response) => format!("{:?}", response),
+        Err(e) => format!("Error: {:?}", e),
+    };
+
+    let c_string = std::ffi::CString::new(result_str).unwrap();
+    c_string.into_raw()
+}
