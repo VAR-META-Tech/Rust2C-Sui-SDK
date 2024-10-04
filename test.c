@@ -4,8 +4,10 @@
 #include "header/sui_lib.h"
 
 // Define global constants
+const char *FAUCET_ADDRESS = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
 const char *SENDER_ADDRESS = "0xe29541364e2c67b8cf26d0fedeebaba8dcbe8290b4cadcb0350c6929f86a1ef1";
 const char *SENDER_MNEMONIC = "urge math pen sand spare gaze salute despair crop jazz nation debate";
+const char *SENDER_MNEMONIC_ALIAS = "My wallet";
 const char *RECIPIENT_ADDRESS = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
 const char *SPONSER_ADDRESS = "0xf662c23f80fbf0e613a8b2fb6c21e1eac198bb83cdeb12720b0404447ed62e3c";
 const char *PRIVATE_KEY_BASE64 = "AON/DOXYIjxYvQ5PN5v+dR0uTGedvwSI5D8NcNWKsmcXaa";
@@ -62,7 +64,7 @@ void test_import_from_private_key()
 
 void test_import_from_mnemonic()
 {
-    ImportResult *result = import_from_mnemonic(SENDER_MNEMONIC, "ED25519");
+    ImportResult *result = import_from_mnemonic(SENDER_MNEMONIC, "ED25519", SENDER_MNEMONIC_ALIAS);
     assert(result != NULL);
     printf("Status: %d\n", result->status);
     printf("Address: %s\n", result->address);
@@ -96,44 +98,52 @@ void test_programmable_transaction_allow_sponser()
     free((void *)result);
 }
 
-void test_programable_transactionbuilder(){
-        // Create a new builder
-    CProgrammableTransactionBuilder* builder = create_builder();
+void test_programable_transactionbuilder()
+{
+    // Create a new builder
+    CProgrammableTransactionBuilder *builder = create_builder();
     assert(builder != NULL);
 
-    // 
-    CArguments* coin = create_arguments();
+    //
+    CArguments *coin = create_arguments();
     add_argument_gas_coin(coin);
 
-    CArguments* amount = create_arguments();
+    CArguments *amount = create_arguments();
     make_pure(builder, amount, bsc_basic("u64", "1000000000"));
-    
+
     add_split_coins_command(builder, coin, amount);
 
     // Add a transfer object command
-    CArguments* agrument = create_arguments();
-    add_argument_result(agrument,0);
-    CArguments* recipient = create_arguments();
+    CArguments *agrument = create_arguments();
+    add_argument_result(agrument, 0);
+    CArguments *recipient = create_arguments();
     make_pure(builder, recipient, bsc_basic("address", RECIPIENT_ADDRESS));
     add_transfer_object_command(builder, agrument, recipient);
 
     // Execute the builder
-    const char* result = execute_transaction(builder, SENDER_ADDRESS, 5000000);
+    const char *result = execute_transaction(builder, SENDER_ADDRESS, 5000000);
     assert(result != NULL);
     printf("Result: %s\n", result);
 }
 
+void test_request_tokens_from_faucet()
+{
+    const char *response = request_tokens_from_faucet(FAUCET_ADDRESS);
+    printf("Response from request faucet: %s\n", response);
+}
+
 int main()
 {
+    test_request_tokens_from_faucet();
     test_get_wallets();
-    test_generate_wallet();
-    test_generate_and_add_key();
-    test_import_from_private_key();
-    test_import_from_mnemonic();
-    test_get_wallet_from_address();
+    // test_generate_wallet();
+    // test_generate_and_add_key();
+    // test_import_from_private_key();
+    // test_import_from_mnemonic();
+    // test_get_wallet_from_address();
     // test_programmable_transaction();
     // test_programmable_transaction_allow_sponser();
-    test_programable_transactionbuilder();
+    // test_programable_transactionbuilder();
 
     return 0;
 }

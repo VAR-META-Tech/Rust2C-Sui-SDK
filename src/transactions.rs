@@ -2,12 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::bail;
+use c_types::{CStringArray, CU8Array};
 use futures::{future, stream::StreamExt};
 use reqwest::Client;
 use serde_json::json;
 use shared_crypto::intent::Intent;
-use tokio::runtime;
-use std::{ffi::{c_char, c_uint, CStr, CString}, slice, str::FromStr, time::Duration};
+use std::{
+    ffi::{c_char, c_uint, CStr, CString},
+    slice,
+    str::FromStr,
+    time::Duration,
+};
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
 use sui_json_rpc_types::{Coin, SuiObjectDataOptions};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
@@ -20,16 +25,19 @@ use sui_sdk::{
     },
     SuiClient, SuiClientBuilder,
 };
-use sui_types::{base_types::{ObjectID, SuiAddress}, executable_transaction};
-use c_types::{CU8Array, CStringArray};
+use sui_types::{
+    base_types::{ObjectID, SuiAddress},
+    executable_transaction,
+};
+use tokio::runtime;
 
-use crate::{c_types, multisig::{_sign_and_execute_transaction, create_sui_transaction}, nfts::{_mint, _transfer_nft}, transaction_builder::CProgrammableTransactionBuilder};
-const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
-#[derive(serde::Deserialize)]
-struct FaucetResponse {
-    task: String,
-    error: Option<String>,
-}
+use crate::{
+    c_types,
+    multisig::{_sign_and_execute_transaction, create_sui_transaction},
+    nfts::{_mint, _transfer_nft},
+    transaction_builder::CProgrammableTransactionBuilder,
+};
+const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas";
 
 pub async fn _programmable_transaction(
     senderaddress: &str,
@@ -204,8 +212,6 @@ pub async fn _programmable_transaction_allow_sponser(
 /// Request tokens from the Faucet for the given address
 #[allow(unused_assignments)]
 pub async fn _request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow::Error> {
-    let sui_client = SuiClientBuilder::default().build_devnet().await?;
-    let address = SuiAddress::from_str(address_str)?;
     let json_body = json![{
         "FixedAmountRequest": {
             "recipient": &address_str
@@ -220,74 +226,10 @@ pub async fn _request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow
         .send()
         .await?;
     println!(
-        "Faucet request for address {address_str} has status: {}",
+        "_Faucet request for address {address_str} has status: {}",
         resp.status()
     );
-    println!("Waiting for the faucet to complete the gas request...");
-    let faucet_resp: FaucetResponse = resp.json().await?;
 
-    let task_id = if let Some(err) = faucet_resp.error {
-        bail!("Faucet request was unsuccessful. Error is {err:?}")
-    } else {
-        faucet_resp.task
-    };
-
-    println!("Faucet request task id: {task_id}");
-
-    let json_body = json![{
-        "GetBatchSendStatusRequest": {
-            "task_id": &task_id
-        }
-    }];
-
-    let mut coin_id = "".to_string();
-
-    // wait for the faucet to finish the batch of token requests
-    loop {
-        let resp = client
-            .get("https://faucet.devnet.sui.io/status")
-            .header("Content-Type", "application/json")
-            .json(&json_body)
-            .send()
-            .await?;
-        let text = resp.text().await?;
-        if text.contains("SUCCEEDED") {
-            let resp_json: serde_json::Value = serde_json::from_str(&text).unwrap();
-
-            coin_id = <&str>::clone(
-                &resp_json
-                    .pointer("/status/transferred_gas_objects/sent/0/id")
-                    .unwrap()
-                    .as_str()
-                    .unwrap(),
-            )
-            .to_string();
-
-            break;
-        } else {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    }
-
-    // wait until the fullnode has the coin object, and check if it has the same owner
-    loop {
-        let owner = sui_client
-            .read_api()
-            .get_object_with_options(
-                ObjectID::from_str(&coin_id)?,
-                SuiObjectDataOptions::new().with_owner(),
-            )
-            .await?;
-
-        if owner.owner().is_some() {
-            let owner_address = owner.owner().unwrap().get_owner_address()?;
-            if owner_address == address {
-                break;
-            }
-        } else {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    }
     Ok(())
 }
 
@@ -352,7 +294,6 @@ pub extern "C" fn create_transaction(
         }
     })
 }
-
 
 #[no_mangle]
 pub extern "C" fn programmable_transaction(

@@ -1,13 +1,25 @@
-use std::{ffi::{c_char, c_longlong, c_ulonglong, CStr}, str::FromStr};
+use std::{
+    ffi::{c_char, c_longlong, c_ulonglong, CStr},
+    str::FromStr,
+};
 
 use anyhow::Result;
 use shared_crypto::intent::Intent;
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
 use sui_json_rpc_types::{Coin, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
-use sui_types::{base_types::{ObjectID, SuiAddress}, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData}, Identifier, TypeTag};
+use sui_types::{
+    base_types::{ObjectID, SuiAddress},
+    programmable_transaction_builder::ProgrammableTransactionBuilder,
+    quorum_driver_types::ExecuteTransactionRequestType,
+    transaction::{
+        Argument, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction,
+        TransactionData,
+    },
+    Identifier, TypeTag,
+};
 
-use crate::{c_types::{CPure}, sui_client::SuiClientSingleton};
+use crate::{c_types::CPure, sui_client::SuiClientSingleton};
 
 // #[repr(C)]
 pub struct CProgrammableTransactionBuilder {
@@ -20,9 +32,7 @@ pub struct CTypeTags {
 
 impl CTypeTags {
     pub fn new() -> Self {
-        Self {
-            tag: Vec::new(),
-        }
+        Self { tag: Vec::new() }
     }
 }
 
@@ -79,7 +89,7 @@ pub extern "C" fn destroy_arguments(arguments: *mut CArguments) {
 }
 
 #[no_mangle]
-pub extern  "C" fn add_argument_gas_coin(arguments: *mut CArguments) {
+pub extern "C" fn add_argument_gas_coin(arguments: *mut CArguments) {
     let arguments = unsafe { &mut *arguments };
     arguments.arguments.push(Argument::GasCoin);
 }
@@ -99,18 +109,23 @@ pub extern "C" fn add_argument_input(arguments: *mut CArguments, value: u16) {
 #[no_mangle]
 pub extern "C" fn add_argument_nested_result(arguments: *mut CArguments, value1: u16, value2: u16) {
     let arguments = unsafe { &mut *arguments };
-    arguments.arguments.push(Argument::NestedResult(value1,value2));
+    arguments
+        .arguments
+        .push(Argument::NestedResult(value1, value2));
 }
 
 #[no_mangle]
-pub extern "C" fn make_pure( builder: *mut CProgrammableTransactionBuilder, arguments: *mut CArguments, value: *mut CPure) {
+pub extern "C" fn make_pure(
+    builder: *mut CProgrammableTransactionBuilder,
+    arguments: *mut CArguments,
+    value: *mut CPure,
+) {
     let builder = unsafe { &mut *builder };
     let arguments = unsafe { &mut *arguments };
     let value = unsafe { &*value };
     let argument = builder.builder.pure_bytes(value.data.clone(), false);
     arguments.arguments.push(argument);
 }
-
 
 #[no_mangle]
 pub extern "C" fn create_builder() -> *mut CProgrammableTransactionBuilder {
@@ -144,15 +159,13 @@ pub extern "C" fn add_move_call_command(
     let module = Identifier::new(module_str).map_err(|e| anyhow::Error::msg(e));
     let function = Identifier::new(function_str).map_err(|e| anyhow::Error::msg(e));
 
-    let move_call = ProgrammableMoveCall {
-        package: package.unwrap(),
-        module: module.unwrap(),
-        function: function.unwrap(),
-        type_arguments: type_tags.tag.clone(),
-        arguments: arguments.arguments.clone(),
-    };
-
-    builder.builder.command(Command::MoveCall(Box::new(move_call)));
+    builder.builder.command(Command::move_call(
+        package.unwrap(),
+        module.unwrap(),
+        function.unwrap(),
+        type_tags.tag.clone(),
+        arguments.arguments.clone(),
+    ));
 }
 
 #[no_mangle]
@@ -165,42 +178,39 @@ pub extern "C" fn add_transfer_object_command(
     let agreements = unsafe { &*agreements }.arguments.clone();
     let recipient = unsafe { &*recipient }.arguments.clone();
 
-    builder.builder.command(Command::TransferObjects(
-        agreements,
-        recipient[0],
-    ));
+    builder
+        .builder
+        .command(Command::TransferObjects(agreements, recipient[0]));
 }
 
 #[no_mangle]
 pub extern "C" fn add_split_coins_command(
     builder: *mut CProgrammableTransactionBuilder,
     coin: *mut CArguments,
-    agreements: *mut CArguments
+    agreements: *mut CArguments,
 ) {
     let builder = unsafe { &mut *builder };
     let coin = unsafe { &*coin }.arguments.clone();
     let agreements = unsafe { &*agreements }.arguments.clone();
 
-    builder.builder.command(Command::SplitCoins(
-        coin[0],
-        agreements,
-    ));
+    builder
+        .builder
+        .command(Command::SplitCoins(coin[0], agreements));
 }
 
 #[no_mangle]
 pub extern "C" fn add_merge_coins_command(
     builder: *mut CProgrammableTransactionBuilder,
     coin: *mut CArguments,
-    agreements: *mut CArguments
+    agreements: *mut CArguments,
 ) {
     let builder = unsafe { &mut *builder };
     let coin = unsafe { &*coin }.arguments.clone();
     let agreements = unsafe { &*agreements }.arguments.clone();
 
-    builder.builder.command(Command::MergeCoins(
-        coin[0],
-        agreements,
-    ));
+    builder
+        .builder
+        .command(Command::MergeCoins(coin[0], agreements));
 }
 
 pub async fn _execute_transaction(
@@ -257,7 +267,9 @@ pub extern "C" fn execute_transaction(
     let transaction_data = builder.builder.finish();
     let result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(async move { _execute_transaction(&sender_str, transaction_data, gas_budget).await });
+        .block_on(
+            async move { _execute_transaction(&sender_str, transaction_data, gas_budget).await },
+        );
 
     let result_str = match result {
         Ok(response) => format!("{:?}", response),
@@ -296,14 +308,15 @@ pub async fn _execute_transaction_allow_sponser(
     // 4) sign transaction
     let keystore = FileBasedKeystore::new(&sui_config_dir()?.join(SUI_KEYSTORE_FILENAME))?;
     let signature = keystore.sign_secure(&sender_address, &tx_data, Intent::sui_transaction())?;
-    let sponser_signature = keystore.sign_secure(&sponser_address, &tx_data, Intent::sui_transaction())?;
+    let sponser_signature =
+        keystore.sign_secure(&sponser_address, &tx_data, Intent::sui_transaction())?;
 
     // 5) execute the transaction
     print!("Executing the transaction...");
     let transaction_response = sui_client
         .quorum_driver_api()
         .execute_transaction_block(
-            Transaction::from_data(tx_data, vec![signature,sponser_signature]),
+            Transaction::from_data(tx_data, vec![signature, sponser_signature]),
             SuiTransactionBlockResponseOptions::full_content(),
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
@@ -327,7 +340,15 @@ pub extern "C" fn execute_transaction_allow_sponser(
     let transaction_data = builder.builder.finish();
     let result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(async move { _execute_transaction_allow_sponser(&sender_str, transaction_data, gas_budget,&sponser_str).await });
+        .block_on(async move {
+            _execute_transaction_allow_sponser(
+                &sender_str,
+                transaction_data,
+                gas_budget,
+                &sponser_str,
+            )
+            .await
+        });
 
     let result_str = match result {
         Ok(response) => format!("{:?}", response),

@@ -2,8 +2,8 @@ use anyhow::{anyhow, Ok};
 use fastcrypto::traits::EncodeDecodeBase64;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::path::PathBuf;
-use std::{ptr, result};
 use std::str::FromStr;
+use std::{ptr, result};
 use sui_keys::key_derive::generate_new_key;
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_types::base_types::SuiAddress;
@@ -212,7 +212,11 @@ pub extern "C" fn generate_and_add_key() -> *mut Wallet {
 }
 
 #[no_mangle]
-pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char, sig_scheme: *const c_char) -> *mut ImportResult {
+pub extern "C" fn import_from_mnemonic(
+    mnemonic: *const c_char,
+    sig_scheme: *const c_char,
+    alias: *const c_char,
+) -> *mut ImportResult {
     let c_mnemonic = unsafe {
         assert!(!mnemonic.is_null());
         CStr::from_ptr(mnemonic)
@@ -223,11 +227,16 @@ pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char, sig_scheme: *con
         CStr::from_ptr(sig_scheme)
     };
 
+    let c_alias = unsafe {
+        assert!(!alias.is_null());
+        CStr::from_ptr(alias)
+    };
+
     //maping sigScheme_str to SignatureScheme
     let signature_scheme;
     if c_sig_scheme.to_str().unwrap_or("") == "ed25519" {
         signature_scheme = SignatureScheme::ED25519;
-    } else if c_sig_scheme.to_str().unwrap_or("")  == "secp256k1" {
+    } else if c_sig_scheme.to_str().unwrap_or("") == "secp256k1" {
         signature_scheme = SignatureScheme::Secp256k1;
     } else if c_sig_scheme.to_str().unwrap_or("") == "secp256r1" {
         signature_scheme = SignatureScheme::Secp256r1;
@@ -238,10 +247,17 @@ pub extern "C" fn import_from_mnemonic(mnemonic: *const c_char, sig_scheme: *con
     let mnemonic = c_mnemonic.to_str().unwrap_or("");
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-    let result = match keystore.import_from_mnemonic(mnemonic, signature_scheme, None) {
+    let result = match keystore.import_from_mnemonic(
+        mnemonic,
+        signature_scheme,
+        None,
+        Some(c_alias.to_str().unwrap_or("").to_string()),
+    ) {
         result::Result::Ok(_) => ImportResult {
             status: ResultStatus::Success as c_int,
-            address: Wallet::string_to_c_char(Some(keystore.addresses().last().unwrap().to_string())),
+            address: Wallet::string_to_c_char(Some(
+                keystore.addresses().last().unwrap().to_string(),
+            )),
             error: Wallet::string_to_c_char(None),
         },
         result::Result::Err(e) => ImportResult {
@@ -290,7 +306,6 @@ pub extern "C" fn import_from_private_key(key_base64: *const c_char) -> *mut Imp
         },
     };
     Box::into_raw(Box::new(result))
-
 }
 
 #[no_mangle]
@@ -309,23 +324,25 @@ pub extern "C" fn get_wallet_from_address(address: *const c_char) -> *mut Wallet
     Box::into_raw(Box::new(wallet))
 }
 
-
 //Private functions
 
 fn get_wallet_from_address_private(address: &str) -> Result<Wallet, anyhow::Error> {
     let keystore_path = default_keystore_path();
-    let keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).map_err(|e| anyhow!("Failed to create keystore: {}", e))?);
-    
+    let keystore = Keystore::from(
+        FileBasedKeystore::new(&keystore_path)
+            .map_err(|e| anyhow!("Failed to create keystore: {}", e))?,
+    );
+
     // Get address from string or return error without crashing
     let address = SuiAddress::from_str(address).map_err(|_| anyhow!("Invalid address"))?;
     let key = keystore.get_key(&address)?;
-    
+
     let scheme = match key {
         SuiKeyPair::Ed25519(_) => SignatureScheme::ED25519,
         SuiKeyPair::Secp256k1(_) => SignatureScheme::Secp256k1,
         SuiKeyPair::Secp256r1(_) => SignatureScheme::Secp256r1,
     };
-    
+
     Ok(Wallet::new(
         Some(address.to_string()),
         None,
@@ -366,7 +383,6 @@ fn default_keystore_path() -> PathBuf {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn get_wallet_objects(
     address: *const c_char,
@@ -387,8 +403,10 @@ pub extern "C" fn get_wallet_objects(
     let objects = runtime
         .block_on(_get_wallet_objects(address, object_type))
         .unwrap_or_else(|_| Vec::new());
-    let mut c_objects: Vec<CSuiObjectData> =
-        objects.into_iter().map(|obj| CSuiObjectData::from(obj)).collect();
+    let mut c_objects: Vec<CSuiObjectData> = objects
+        .into_iter()
+        .map(|obj| CSuiObjectData::from(obj))
+        .collect();
     let ptr = c_objects.as_mut_ptr();
     let len = c_objects.len();
     std::mem::forget(c_objects);

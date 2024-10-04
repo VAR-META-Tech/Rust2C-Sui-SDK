@@ -3,7 +3,6 @@ use anyhow::Result;
 use anyhow::{anyhow, Ok};
 use move_core_types::language_storage::StructTag;
 use shared_crypto::intent::Intent;
-use tokio::runtime;
 use std::ffi::{c_char, CStr, CString};
 use std::str::FromStr;
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
@@ -25,6 +24,7 @@ use sui_sdk::{
 };
 use sui_types::base_types::SuiAddress;
 use sui_types::transaction::ObjectArg;
+use tokio::runtime;
 
 pub async fn _mint(
     package_id: &str,
@@ -71,13 +71,13 @@ pub async fn _mint(
     let package = ObjectID::from_hex_literal(package_id).map_err(|e| anyhow!(e))?;
     let module = Identifier::new("nft").map_err(|e| anyhow!(e))?;
     let function = Identifier::new("mint_to_sender").map_err(|e| anyhow!(e))?;
-    ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+    ptb.command(Command::move_call(
         package,
         module,
         function,
-        type_arguments: vec![],
-        arguments: vec![Argument::Input(0), Argument::Input(1), Argument::Input(2)],
-    })));
+        vec![],
+        vec![Argument::Input(0), Argument::Input(1), Argument::Input(2)],
+    ));
 
     // build the transaction block by calling finish on the ptb
     let builder = ptb.finish();
@@ -155,13 +155,13 @@ pub async fn _transfer_nft(
     let package = ObjectID::from_hex_literal(package_id).map_err(|e| anyhow!(e))?;
     let module = Identifier::new("nft").map_err(|e| anyhow!(e))?;
     let function = Identifier::new("transfer").map_err(|e| anyhow!(e))?;
-    ptb.command(Command::MoveCall(Box::new(ProgrammableMoveCall {
+    ptb.command(Command::move_call(
         package,
         module,
         function,
-        type_arguments: vec![],
-        arguments: vec![Argument::Input(0), Argument::Input(1)],
-    })));
+        vec![],
+        vec![Argument::Input(0), Argument::Input(1)],
+    ));
 
     // build the transaction block by calling finish on the ptb
     let builder = ptb.finish();

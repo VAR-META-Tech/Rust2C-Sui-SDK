@@ -189,7 +189,9 @@ struct Wallet *generate_wallet(const char *key_scheme, const char *word_length);
 
 struct Wallet *generate_and_add_key(void);
 
-struct ImportResult *import_from_mnemonic(const char *mnemonic, const char *sig_scheme);
+struct ImportResult *import_from_mnemonic(const char *mnemonic,
+                                          const char *sig_scheme,
+                                          const char *alias);
 
 struct ImportResult *import_from_private_key(const char *key_base64);
 
