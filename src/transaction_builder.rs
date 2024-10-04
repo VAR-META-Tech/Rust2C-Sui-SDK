@@ -1,4 +1,4 @@
-use std::{ffi::{c_char, CStr}, str::FromStr};
+use std::{ffi::{c_char, c_longlong, c_ulonglong, CStr}, str::FromStr};
 
 use anyhow::Result;
 use shared_crypto::intent::Intent;
@@ -7,7 +7,7 @@ use sui_json_rpc_types::{Coin, SuiTransactionBlockResponse, SuiTransactionBlockR
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use sui_types::{base_types::{ObjectID, SuiAddress}, programmable_transaction_builder::ProgrammableTransactionBuilder, quorum_driver_types::ExecuteTransactionRequestType, transaction::{Argument, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction, TransactionData}, Identifier, TypeTag};
 
-use crate::sui_client::SuiClientSingleton;
+use crate::{c_types::{CPure}, sui_client::SuiClientSingleton};
 
 // #[repr(C)]
 pub struct CProgrammableTransactionBuilder {
@@ -26,11 +26,11 @@ impl CTypeTags {
     }
 }
 
-pub struct CAgruments {
+pub struct CArguments {
     arguments: Vec<Argument>,
 }
 
-impl CAgruments {
+impl CArguments {
     pub fn new() -> Self {
         Self {
             arguments: Vec::new(),
@@ -66,42 +66,49 @@ pub extern "C" fn destroy_type_tags(type_tags: *mut CTypeTags) {
     }
 }
 
-
-
 #[no_mangle]
-pub extern "C" fn create_arguments() -> *mut CAgruments {
-    Box::into_raw(Box::new(CAgruments::new()))
+pub extern "C" fn create_arguments() -> *mut CArguments {
+    Box::into_raw(Box::new(CArguments::new()))
 }
 
 #[no_mangle]
-pub extern "C" fn destroy_arguments(arguments: *mut CAgruments) {
+pub extern "C" fn destroy_arguments(arguments: *mut CArguments) {
     unsafe {
         Box::from_raw(arguments);
     }
 }
 
 #[no_mangle]
-pub extern  "C" fn add_argument_gas_coin(arguments: *mut CAgruments) {
+pub extern  "C" fn add_argument_gas_coin(arguments: *mut CArguments) {
     let arguments = unsafe { &mut *arguments };
     arguments.arguments.push(Argument::GasCoin);
 }
 
 #[no_mangle]
-pub extern "C" fn add_argument_result(arguments: *mut CAgruments, value: u16) {
+pub extern "C" fn add_argument_result(arguments: *mut CArguments, value: u16) {
     let arguments = unsafe { &mut *arguments };
     arguments.arguments.push(Argument::Result(value));
 }
 
 #[no_mangle]
-pub extern "C" fn add_argument_input(arguments: *mut CAgruments, value: u16) {
+pub extern "C" fn add_argument_input(arguments: *mut CArguments, value: u16) {
     let arguments = unsafe { &mut *arguments };
     arguments.arguments.push(Argument::Input(value));
 }
 
 #[no_mangle]
-pub extern "C" fn add_argument_nested_result(arguments: *mut CAgruments, value1: u16, value2: u16) {
+pub extern "C" fn add_argument_nested_result(arguments: *mut CArguments, value1: u16, value2: u16) {
     let arguments = unsafe { &mut *arguments };
     arguments.arguments.push(Argument::NestedResult(value1,value2));
+}
+
+#[no_mangle]
+pub extern "C" fn make_pure( builder: *mut CProgrammableTransactionBuilder, arguments: *mut CArguments, value: *mut CPure) {
+    let builder = unsafe { &mut *builder };
+    let arguments = unsafe { &mut *arguments };
+    let value = unsafe { &*value };
+    let argument = builder.builder.pure_bytes(value.data.clone(), false);
+    arguments.arguments.push(argument);
 }
 
 
@@ -124,7 +131,7 @@ pub extern "C" fn add_move_call_command(
     module: *const c_char,
     function: *const c_char,
     type_arguments: *mut CTypeTags,
-    arguments: *mut CAgruments,
+    arguments: *mut CArguments,
 ) {
     let builder = unsafe { &mut *builder };
     let package_str = unsafe { CStr::from_ptr(package).to_str().unwrap() };
@@ -151,27 +158,24 @@ pub extern "C" fn add_move_call_command(
 #[no_mangle]
 pub extern "C" fn add_transfer_object_command(
     builder: *mut CProgrammableTransactionBuilder,
-    agreements: *mut CAgruments,
-    recipient: *const c_char,
+    agreements: *mut CArguments,
+    recipient: *mut CArguments,
 ) {
     let builder = unsafe { &mut *builder };
-    let recipient_str = unsafe { CStr::from_ptr(recipient).to_str().unwrap() };
-    let recipient = SuiAddress::from_str(&recipient_str).unwrap();
     let agreements = unsafe { &*agreements }.arguments.clone();
-
-    let argument_address = builder.builder.pure(recipient).unwrap();
+    let recipient = unsafe { &*recipient }.arguments.clone();
 
     builder.builder.command(Command::TransferObjects(
         agreements,
-        argument_address,
+        recipient[0],
     ));
 }
 
 #[no_mangle]
 pub extern "C" fn add_split_coins_command(
     builder: *mut CProgrammableTransactionBuilder,
-    coin: *mut CAgruments,
-    agreements: *mut CAgruments
+    coin: *mut CArguments,
+    agreements: *mut CArguments
 ) {
     let builder = unsafe { &mut *builder };
     let coin = unsafe { &*coin }.arguments.clone();
@@ -183,9 +187,26 @@ pub extern "C" fn add_split_coins_command(
     ));
 }
 
+#[no_mangle]
+pub extern "C" fn add_merge_coins_command(
+    builder: *mut CProgrammableTransactionBuilder,
+    coin: *mut CArguments,
+    agreements: *mut CArguments
+) {
+    let builder = unsafe { &mut *builder };
+    let coin = unsafe { &*coin }.arguments.clone();
+    let agreements = unsafe { &*agreements }.arguments.clone();
+
+    builder.builder.command(Command::MergeCoins(
+        coin[0],
+        agreements,
+    ));
+}
+
 pub async fn _execute_transaction(
     sender: &str,
-    transaction_data: ProgrammableTransaction
+    transaction_data: ProgrammableTransaction,
+    gas_budget: u64,
 ) -> Result<(SuiTransactionBlockResponse), anyhow::Error> {
     let sui_client = SuiClientSingleton::instance().get_or_init().await?;
     let sender_address = SuiAddress::from_str(sender)?;
@@ -194,7 +215,6 @@ pub async fn _execute_transaction(
         .get_coins(sender_address, None, None, None)
         .await?;
     let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
-    let gas_budget = 5_000_000;
     let gas_price = sui_client.read_api().get_reference_gas_price().await?;
     // create the transaction data that will be sent to the network
     let tx_data = TransactionData::new_programmable(
@@ -229,6 +249,7 @@ pub async fn _execute_transaction(
 pub extern "C" fn execute_transaction(
     builder: *mut CProgrammableTransactionBuilder,
     sender: *const c_char,
+    gas_budget: c_ulonglong,
 ) -> *mut c_char {
     let builder = unsafe { Box::from_raw(builder) };
     let sender_str = unsafe { CStr::from_ptr(sender).to_str().unwrap() };
@@ -236,7 +257,7 @@ pub extern "C" fn execute_transaction(
     let transaction_data = builder.builder.finish();
     let result = tokio::runtime::Runtime::new()
         .unwrap()
-        .block_on(async move { _execute_transaction(&sender_str, transaction_data).await });
+        .block_on(async move { _execute_transaction(&sender_str, transaction_data, gas_budget).await });
 
     let result_str = match result {
         Ok(response) => format!("{:?}", response),

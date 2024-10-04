@@ -102,21 +102,23 @@ void test_programable_transactionbuilder(){
     assert(builder != NULL);
 
     // 
-    CAgruments* coin = create_arguments();
+    CArguments* coin = create_arguments();
     add_argument_gas_coin(coin);
 
-    CAgruments* amount = create_arguments();
-    add_argument_result(amount, (uint16_t)10000000);
+    CArguments* amount = create_arguments();
+    make_pure(builder, amount, bsc_basic("u64", "1000000000"));
     
     add_split_coins_command(builder, coin, amount);
 
     // Add a transfer object command
-    CAgruments* agrument = create_arguments();
+    CArguments* agrument = create_arguments();
     add_argument_result(agrument,0);
-    add_transfer_object_command(builder, agrument, RECIPIENT_ADDRESS);
+    CArguments* recipient = create_arguments();
+    make_pure(builder, recipient, bsc_basic("address", RECIPIENT_ADDRESS));
+    add_transfer_object_command(builder, agrument, recipient);
 
     // Execute the builder
-    const char* result = execute_transaction(builder, SENDER_ADDRESS);
+    const char* result = execute_transaction(builder, SENDER_ADDRESS, 5000000);
     assert(result != NULL);
     printf("Result: %s\n", result);
 }

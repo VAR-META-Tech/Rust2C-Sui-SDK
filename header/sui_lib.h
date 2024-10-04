@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct CAgruments CAgruments;
+typedef struct CArguments CArguments;
 
 typedef struct CProgrammableTransactionBuilder CProgrammableTransactionBuilder;
+
+typedef struct CPure CPure;
 
 typedef struct CTypeTags CTypeTags;
 
@@ -32,12 +34,6 @@ typedef struct CSuiObjectDataArray {
   uintptr_t len;
 } CSuiObjectDataArray;
 
-typedef struct CU8Array {
-  const unsigned char *data;
-  unsigned int len;
-  const char *error;
-} CU8Array;
-
 typedef struct CBalance {
   const char *coin_type;
   uintptr_t coin_object_count;
@@ -62,6 +58,12 @@ typedef struct CCoinArray {
   const struct CCoin *coins;
   uintptr_t length;
 } CCoinArray;
+
+typedef struct CU8Array {
+  const unsigned char *data;
+  unsigned int len;
+  const char *error;
+} CU8Array;
 
 typedef struct CMultiSig {
   const char *address;
@@ -99,7 +101,7 @@ void free_sui_object_data_list(struct CSuiObjectDataArray array);
 
 void free_error_string(const char *error);
 
-struct CU8Array bsc_basic(const char *type_, const char *data);
+struct CPure *bsc_basic(const char *type_, const char *data);
 
 int32_t coin_read_api(void);
 
@@ -199,17 +201,21 @@ void add_type_tag(struct CTypeTags *type_tags, const char *tag);
 
 void destroy_type_tags(struct CTypeTags *type_tags);
 
-struct CAgruments *create_arguments(void);
+struct CArguments *create_arguments(void);
 
-void destroy_arguments(struct CAgruments *arguments);
+void destroy_arguments(struct CArguments *arguments);
 
-void add_argument_gas_coin(struct CAgruments *arguments);
+void add_argument_gas_coin(struct CArguments *arguments);
 
-void add_argument_result(struct CAgruments *arguments, uint16_t value);
+void add_argument_result(struct CArguments *arguments, uint16_t value);
 
-void add_argument_input(struct CAgruments *arguments, uint16_t value);
+void add_argument_input(struct CArguments *arguments, uint16_t value);
 
-void add_argument_nested_result(struct CAgruments *arguments, uint16_t value1, uint16_t value2);
+void add_argument_nested_result(struct CArguments *arguments, uint16_t value1, uint16_t value2);
+
+void make_pure(struct CProgrammableTransactionBuilder *builder,
+               struct CArguments *arguments,
+               struct CPure *value);
 
 struct CProgrammableTransactionBuilder *create_builder(void);
 
@@ -220,14 +226,20 @@ void add_move_call_command(struct CProgrammableTransactionBuilder *builder,
                            const char *module,
                            const char *function,
                            struct CTypeTags *type_arguments,
-                           struct CAgruments *arguments);
+                           struct CArguments *arguments);
 
 void add_transfer_object_command(struct CProgrammableTransactionBuilder *builder,
-                                 struct CAgruments *agreements,
-                                 const char *recipient);
+                                 struct CArguments *agreements,
+                                 struct CArguments *recipient);
 
 void add_split_coins_command(struct CProgrammableTransactionBuilder *builder,
-                             struct CAgruments *coin,
-                             struct CAgruments *agreements);
+                             struct CArguments *coin,
+                             struct CArguments *agreements);
 
-char *execute_transaction(struct CProgrammableTransactionBuilder *builder, const char *sender);
+void add_merge_coins_command(struct CProgrammableTransactionBuilder *builder,
+                             struct CArguments *coin,
+                             struct CArguments *agreements);
+
+char *execute_transaction(struct CProgrammableTransactionBuilder *builder,
+                          const char *sender,
+                          unsigned long long gas_budget);
