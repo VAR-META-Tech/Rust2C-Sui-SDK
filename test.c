@@ -5,11 +5,11 @@
 
 // Define global constants
 const char *FAUCET_ADDRESS = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
-const char *SENDER_ADDRESS = "0xe29541364e2c67b8cf26d0fedeebaba8dcbe8290b4cadcb0350c6929f86a1ef1";
-const char *SENDER_MNEMONIC = "urge math pen sand spare gaze salute despair crop jazz nation debate";
-const char *SENDER_MNEMONIC_ALIAS = "My wallet";
-const char *RECIPIENT_ADDRESS = "0xfee0108a2467a551f50f3f7c2dc77128406ae314ef4515030dc62accb0c15bcc";
-const char *SPONSER_ADDRESS = "0xf662c23f80fbf0e613a8b2fb6c21e1eac198bb83cdeb12720b0404447ed62e3c";
+const char *SENDER_ADDRESS = "0x2107184d961804e3cbeef48106a7384d11d90f5a050fde0709da8e079450b824";
+const char *SENDER_MNEMONIC = "grab away penalty eye treat embrace over hundred cave neither mix oxygen";
+const char *SENDER_MNEMONIC_ALIAS = "";
+const char *RECIPIENT_ADDRESS = "0xf0897c8c9dada307db3691b0ecda62107f9aaa2bc56d7978bd3f3814da75a5f2";
+const char *SPONSER_ADDRESS = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
 const char *PRIVATE_KEY_BASE64 = "AON/DOXYIjxYvQ5PN5v+dR0uTGedvwSI5D8NcNWKsmcXaa";
 const char *MNEMONIC = "unhappy above olympic pig brick embark chest crisp sheriff awful frown smooth";
 
@@ -134,15 +134,15 @@ void test_request_tokens_from_faucet()
 
 int main()
 {
-    test_request_tokens_from_faucet();
-    test_get_wallets();
+    // test_request_tokens_from_faucet();
+    // test_get_wallets();
     // test_generate_wallet();
     // test_generate_and_add_key();
     // test_import_from_private_key();
     // test_import_from_mnemonic();
     // test_get_wallet_from_address();
     // test_programmable_transaction();
-    // test_programmable_transaction_allow_sponser();
+    test_programmable_transaction_allow_sponser();
     // test_programable_transactionbuilder();
 
     return 0;

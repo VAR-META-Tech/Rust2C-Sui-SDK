@@ -291,7 +291,7 @@ pub async fn _execute_transaction_allow_sponser(
     let sponser_address = SuiAddress::from_str(sponser)?;
     let coins = sui_client
         .coin_read_api()
-        .get_coins(sender_address, None, None, None)
+        .get_coins(sponser_address, None, None, None)
         .await?;
     let selected_gas_coins: Vec<_> = coins.data.iter().map(|coin| coin.object_ref()).collect();
     let gas_price = sui_client.read_api().get_reference_gas_price().await?;

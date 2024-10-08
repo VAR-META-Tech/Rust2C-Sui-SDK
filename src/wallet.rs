@@ -243,16 +243,16 @@ pub extern "C" fn import_from_mnemonic(
     } else {
         signature_scheme = SignatureScheme::ED25519;
     }
-
+    let alias_string = c_alias.to_str().unwrap_or("").to_string();
+    let alias = if alias_string == "" {
+        None
+    } else {
+        Some(alias_string)
+    };
     let mnemonic = c_mnemonic.to_str().unwrap_or("");
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-    let result = match keystore.import_from_mnemonic(
-        mnemonic,
-        signature_scheme,
-        None,
-        Some(c_alias.to_str().unwrap_or("").to_string()),
-    ) {
+    let result = match keystore.import_from_mnemonic(mnemonic, signature_scheme, None, alias) {
         result::Result::Ok(_) => ImportResult {
             status: ResultStatus::Success as c_int,
             address: Wallet::string_to_c_char(Some(
