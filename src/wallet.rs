@@ -253,11 +253,9 @@ pub extern "C" fn import_from_mnemonic(
     let keystore_path = default_keystore_path();
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
     let result = match keystore.import_from_mnemonic(mnemonic, signature_scheme, None, alias) {
-        result::Result::Ok(_) => ImportResult {
+        result::Result::Ok(sui_address) => ImportResult {
             status: ResultStatus::Success as c_int,
-            address: Wallet::string_to_c_char(Some(
-                keystore.addresses().last().unwrap().to_string(),
-            )),
+            address: Wallet::string_to_c_char(Some(sui_address.to_string())),
             error: Wallet::string_to_c_char(None),
         },
         result::Result::Err(e) => ImportResult {

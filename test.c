@@ -6,7 +6,7 @@
 // Define global constants
 const char *FAUCET_ADDRESS = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
 const char *SENDER_ADDRESS = "0x2107184d961804e3cbeef48106a7384d11d90f5a050fde0709da8e079450b824";
-const char *SENDER_MNEMONIC = "grab away penalty eye treat embrace over hundred cave neither mix oxygen";
+const char *SENDER_MNEMONIC = "aerobic fluid patient banner puppy balcony settle silly ticket better library grid";
 const char *SENDER_MNEMONIC_ALIAS = "";
 const char *RECIPIENT_ADDRESS = "0xf0897c8c9dada307db3691b0ecda62107f9aaa2bc56d7978bd3f3814da75a5f2";
 const char *SPONSER_ADDRESS = "0x013c740d731b06bb7447316e7b43ea6120d808d07cd0a8a0c6f391930bd449dd";
@@ -139,10 +139,10 @@ int main()
     // test_generate_wallet();
     // test_generate_and_add_key();
     // test_import_from_private_key();
-    // test_import_from_mnemonic();
+    test_import_from_mnemonic();
     // test_get_wallet_from_address();
     // test_programmable_transaction();
-    test_programmable_transaction_allow_sponser();
+    // test_programmable_transaction_allow_sponser();
     // test_programable_transactionbuilder();
 
     return 0;
