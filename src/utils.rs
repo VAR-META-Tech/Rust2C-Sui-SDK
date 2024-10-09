@@ -1,10 +1,9 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{str::FromStr, time::Duration};
-
 use anyhow::bail;
 use futures::{future, stream::StreamExt};
+use std::{str::FromStr, time::Duration};
 use sui_config::{
     sui_config_dir, Config, PersistedConfig, SUI_CLIENT_CONFIG, SUI_KEYSTORE_FILENAME,
 };

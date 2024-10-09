@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::bail;
+use c_types::{CStringArray, CU8Array};
 use futures::{future, stream::StreamExt};
 use reqwest::Client;
 use serde_json::json;
 use shared_crypto::intent::Intent;
-use std::{str::FromStr, time::Duration};
+use std::{
+    ffi::{c_char, c_uint, CStr, CString},
+    slice,
+    str::FromStr,
+    time::Duration,
+};
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
 use sui_json_rpc_types::{Coin, SuiObjectDataOptions};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
@@ -19,13 +25,19 @@ use sui_sdk::{
     },
     SuiClient, SuiClientBuilder,
 };
-use sui_types::base_types::{ObjectID, SuiAddress};
-const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas"; // devnet faucet
-#[derive(serde::Deserialize)]
-struct FaucetResponse {
-    task: String,
-    error: Option<String>,
-}
+use sui_types::{
+    base_types::{ObjectID, SuiAddress},
+    executable_transaction,
+};
+use tokio::runtime;
+
+use crate::{
+    c_types,
+    multisig::{_sign_and_execute_transaction, create_sui_transaction},
+    nfts::{_mint, _transfer_nft},
+    transaction_builder::CProgrammableTransactionBuilder,
+};
+const SUI_FAUCET: &str = "https://faucet.devnet.sui.io/gas";
 
 pub async fn _programmable_transaction(
     senderaddress: &str,
@@ -40,7 +52,7 @@ pub async fn _programmable_transaction(
     let sui = SuiClientBuilder::default().build_devnet().await?;
     let _coin = fetch_coin(&sui, &sender).await?;
     if _coin.is_none() {
-        request_tokens_from_faucet(senderaddress).await?;
+        _request_tokens_from_faucet(senderaddress).await?;
     }
     // we need to find the coin we will use as gas
     let coins = sui
@@ -125,7 +137,7 @@ pub async fn _programmable_transaction_allow_sponser(
     let sui = SuiClientBuilder::default().build_devnet().await?;
     let _coin = fetch_coin(&sui, &sender).await?;
     if _coin.is_none() {
-        request_tokens_from_faucet(senderaddress).await?;
+        _request_tokens_from_faucet(senderaddress).await?;
     }
     // we need to find the coin we will use as gas
     let coins = sui
@@ -199,9 +211,7 @@ pub async fn _programmable_transaction_allow_sponser(
 
 /// Request tokens from the Faucet for the given address
 #[allow(unused_assignments)]
-pub async fn request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow::Error> {
-    let sui_client = SuiClientBuilder::default().build_devnet().await?;
-    let address = SuiAddress::from_str(address_str)?;
+pub async fn _request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow::Error> {
     let json_body = json![{
         "FixedAmountRequest": {
             "recipient": &address_str
@@ -216,74 +226,10 @@ pub async fn request_tokens_from_faucet(address_str: &str) -> Result<(), anyhow:
         .send()
         .await?;
     println!(
-        "Faucet request for address {address_str} has status: {}",
+        "_Faucet request for address {address_str} has status: {}",
         resp.status()
     );
-    println!("Waiting for the faucet to complete the gas request...");
-    let faucet_resp: FaucetResponse = resp.json().await?;
 
-    let task_id = if let Some(err) = faucet_resp.error {
-        bail!("Faucet request was unsuccessful. Error is {err:?}")
-    } else {
-        faucet_resp.task
-    };
-
-    println!("Faucet request task id: {task_id}");
-
-    let json_body = json![{
-        "GetBatchSendStatusRequest": {
-            "task_id": &task_id
-        }
-    }];
-
-    let mut coin_id = "".to_string();
-
-    // wait for the faucet to finish the batch of token requests
-    loop {
-        let resp = client
-            .get("https://faucet.devnet.sui.io/status")
-            .header("Content-Type", "application/json")
-            .json(&json_body)
-            .send()
-            .await?;
-        let text = resp.text().await?;
-        if text.contains("SUCCEEDED") {
-            let resp_json: serde_json::Value = serde_json::from_str(&text).unwrap();
-
-            coin_id = <&str>::clone(
-                &resp_json
-                    .pointer("/status/transferred_gas_objects/sent/0/id")
-                    .unwrap()
-                    .as_str()
-                    .unwrap(),
-            )
-            .to_string();
-
-            break;
-        } else {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    }
-
-    // wait until the fullnode has the coin object, and check if it has the same owner
-    loop {
-        let owner = sui_client
-            .read_api()
-            .get_object_with_options(
-                ObjectID::from_str(&coin_id)?,
-                SuiObjectDataOptions::new().with_owner(),
-            )
-            .await?;
-
-        if owner.owner().is_some() {
-            let owner_address = owner.owner().unwrap().get_owner_address()?;
-            if owner_address == address {
-                break;
-            }
-        } else {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-    }
     Ok(())
 }
 
@@ -302,4 +248,139 @@ pub async fn fetch_coin(
         .boxed();
     let coin = coins.next().await;
     Ok(coin)
+}
+
+//Public functions for FFI
+#[no_mangle]
+pub extern "C" fn create_transaction(
+    from_address: *const c_char,
+    to_address: *const c_char,
+    amount: u64,
+) -> c_types::CU8Array {
+    let rt = runtime::Runtime::new().unwrap();
+    let c_str = unsafe {
+        assert!(!from_address.is_null());
+        CStr::from_ptr(from_address)
+    };
+    let from_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let c_str = unsafe {
+        assert!(!to_address.is_null());
+        CStr::from_ptr(to_address)
+    };
+    let to_address = c_str.to_str().unwrap_or("Invalid UTF-8");
+    rt.block_on(async {
+        match create_sui_transaction(from_address, to_address, amount).await {
+            Ok(tx) => {
+                let bytes = bcs::to_bytes(&tx).unwrap();
+                println!("Vec<u8> transaction in Rust: {:?}", bytes);
+                let boxed_bytes = bytes.into_boxed_slice();
+                let data_ptr = boxed_bytes.as_ptr();
+                let len = boxed_bytes.len() as c_uint;
+                std::mem::forget(boxed_bytes);
+                c_types::CU8Array {
+                    data: data_ptr,
+                    len: len,
+                    error: std::ptr::null(),
+                }
+            } // Return 0 to indicate success.
+            Err(e) => {
+                let error_message = CString::new(e.to_string()).unwrap().into_raw();
+                c_types::CU8Array {
+                    data: std::ptr::null(),
+                    len: 0,
+                    error: error_message,
+                }
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn programmable_transaction(
+    sender_address: *const c_char,
+    recipient_address: *const c_char,
+    amount: u64,
+) -> *const c_char {
+    // Convert C strings to Rust strings
+    let sender = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address).to_string_lossy().to_string()
+    };
+    let recipient = unsafe {
+        assert!(!recipient_address.is_null());
+        CStr::from_ptr(recipient_address)
+            .to_string_lossy()
+            .to_string()
+    };
+
+    // Run the async function synchronously
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move { _programmable_transaction(&sender, &recipient, amount).await });
+
+    // Return the result as a C string
+    match result {
+        Ok(_) => CString::new("Transaction completed successfully")
+            .unwrap()
+            .into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn programmable_transaction_allow_sponser(
+    sender_address: *const c_char,
+    recipient_address: *const c_char,
+    amount: u64,
+    sponser_address: *const c_char,
+) -> *const c_char {
+    // Convert C strings to Rust strings
+    let sender = unsafe {
+        assert!(!sender_address.is_null());
+        CStr::from_ptr(sender_address).to_string_lossy().to_string()
+    };
+    let recipient = unsafe {
+        assert!(!recipient_address.is_null());
+        CStr::from_ptr(recipient_address)
+            .to_string_lossy()
+            .to_string()
+    };
+    let sponser = unsafe {
+        assert!(!sponser_address.is_null());
+        CStr::from_ptr(sponser_address)
+            .to_string_lossy()
+            .to_string()
+    };
+
+    // Run the async function synchronously
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async move {
+            _programmable_transaction_allow_sponser(&sender, &recipient, amount, &sponser).await
+        });
+
+    // Return the result as a C string
+    match result {
+        Ok(_) => CString::new("Transaction completed successfully")
+            .map(|cstr| cstr.into_raw())
+            .unwrap_or(std::ptr::null_mut()),
+        Err(e) => CString::new(format!("Error: {}", e))
+            .map(|cstr| cstr.into_raw())
+            .unwrap_or(std::ptr::null_mut()),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn request_tokens_from_faucet(address_str: *const c_char) -> *const c_char {
+    let address = unsafe { CStr::from_ptr(address_str).to_string_lossy().to_string() };
+
+    // Run the async function synchronously inside the Rust environment
+    let result = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(async { _request_tokens_from_faucet(&address).await });
+
+    match result {
+        Ok(_) => CString::new("Request successful").unwrap().into_raw(),
+        Err(e) => CString::new(format!("Error: {}", e)).unwrap().into_raw(),
+    }
 }

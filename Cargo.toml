@@ -49,12 +49,15 @@ serde_with = { version = "2.1.0", features = ["hex"] }
 # serde_yaml = "0.9.21"
 serde_yaml = "0.8.26"
 once_cell = "1.8.0"
-fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "4988a4744fcaf8bc7f60bf660d9a223ed0f54cc6" }
-fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "4988a4744fcaf8bc7f60bf660d9a223ed0f54cc6" }
-fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "4988a4744fcaf8bc7f60bf660d9a223ed0f54cc6", package = "fastcrypto-zkp" }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "c050ffc78b93739328af5d59b05f90e0e26b1b7e" }
+fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "c050ffc78b93739328af5d59b05f90e0e26b1b7e" }
+fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "c050ffc78b93739328af5d59b05f90e0e26b1b7e", package = "fastcrypto-zkp" }
+fastcrypto-vdf = { git = "https://github.com/MystenLabs/fastcrypto", rev = "c050ffc78b93739328af5d59b05f90e0e26b1b7e", features = [
+    "experimental",
+] }
 rand = "0.8.5"
 
 [lib]
 name = "sui_rust_sdk"
 crate-type = ["staticlib", "cdylib"]
-path = "src/sui-sdk-lib.rs"
+path = "src/sui_sdk_lib.rs"
