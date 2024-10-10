@@ -109,6 +109,9 @@ pub async fn _programmable_transaction(
         .await?;
     print!("done\n Transaction information: ");
     println!("{:?}", transaction_response);
+    if !transaction_response.status_ok().unwrap_or(false) {
+        return Err(anyhow::Error::msg("Transaction failed"));
+    }
 
     let coins = sui
         .coin_read_api()
@@ -196,6 +199,9 @@ pub async fn _programmable_transaction_allow_sponser(
         .await?;
     print!("done\n Transaction information: ");
     println!("{:?}", transaction_response);
+    if !transaction_response.status_ok().unwrap_or(false) {
+        return Err(anyhow::Error::msg("Transaction failed"));
+    }
 
     let coins = sui
         .coin_read_api()

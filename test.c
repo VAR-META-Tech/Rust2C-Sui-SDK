@@ -109,7 +109,7 @@ void test_programable_transactionbuilder()
     add_argument_gas_coin(coin);
 
     CArguments *amount = create_arguments();
-    make_pure(builder, amount, bsc_basic("u64", "1000000000"));
+    make_pure(builder, amount, bsc_basic("u64", "1000000000000"));
 
     add_split_coins_command(builder, coin, amount);
 
@@ -139,11 +139,12 @@ int main()
     // test_generate_wallet();
     // test_generate_and_add_key();
     // test_import_from_private_key();
-    test_import_from_mnemonic();
+    // test_import_from_mnemonic();
     // test_get_wallet_from_address();
     // test_programmable_transaction();
     // test_programmable_transaction_allow_sponser();
-    // test_programable_transactionbuilder();
+    test_programable_transactionbuilder();
+    test_get_wallets();
 
     return 0;
 }

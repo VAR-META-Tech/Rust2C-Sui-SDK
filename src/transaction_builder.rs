@@ -250,7 +250,9 @@ pub async fn _execute_transaction(
         )
         .await?;
     print!("done\n Transaction information: ");
-    //return transaction_response;
+    if !transaction_response.status_ok().unwrap_or(false) {
+        return Err(anyhow::Error::msg("Transaction failed"));
+    }
     Ok(transaction_response)
 }
 
@@ -322,6 +324,9 @@ pub async fn _execute_transaction_allow_sponser(
         )
         .await?;
     print!("done\n Transaction information: ");
+    if !transaction_response.status_ok().unwrap_or(false) {
+        return Err(anyhow::Error::msg("Transaction failed"));
+    }
     //return transaction_response;
     Ok(transaction_response)
 }

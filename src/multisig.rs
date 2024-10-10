@@ -1,12 +1,11 @@
 use crate::c_types::{self, CStringArray, CU8Array};
 use crate::sui_client::SuiClientSingleton;
-use std::result::Result::Ok;
-use shared_crypto::intent::{Intent, IntentMessage};
-use tokio::runtime;
 use core::slice;
+use shared_crypto::intent::{Intent, IntentMessage};
 use std::ffi::{c_uint, CStr, CString};
-use std::{ffi::c_char, path::PathBuf};
+use std::result::Result::Ok;
 use std::str::FromStr;
+use std::{ffi::c_char, path::PathBuf};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::{
     rpc_types::SuiTransactionBlockResponseOptions,
@@ -21,6 +20,7 @@ use sui_types::crypto::Signature;
 use sui_types::multisig::{MultiSig, MultiSigPublicKey, WeightUnit};
 use sui_types::signature::GenericSignature;
 use sui_types::transaction::{Argument, Command, Transaction};
+use tokio::runtime;
 
 pub fn default_keystore_path() -> PathBuf {
     match dirs::home_dir() {
@@ -144,11 +144,13 @@ pub async fn _sign_and_execute_transaction(
         "Transaction executed. Transaction digest: {}",
         transaction_response.digest.base58_encode()
     );
+    if !transaction_response.status_ok().unwrap_or(false) {
+        return Err(anyhow::Error::msg("Transaction failed"));
+    }
     Ok(())
 }
 
 //public function for ffi
-
 
 #[repr(C)]
 pub struct CMultiSig {
