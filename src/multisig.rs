@@ -138,7 +138,7 @@ pub async fn _sign_and_execute_transaction(
     let tx = Transaction::from_generic_sig_data(tx_data, vec![multisig]);
     let transaction_response = sui_client
         .quorum_driver_api()
-        .execute_transaction_block(tx, SuiTransactionBlockResponseOptions::default(), None)
+        .execute_transaction_block(tx, SuiTransactionBlockResponseOptions::full_content(), None)
         .await?;
     println!(
         "Transaction executed. Transaction digest: {}",
