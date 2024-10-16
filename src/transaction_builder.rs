@@ -6,7 +6,10 @@ use std::{
 use anyhow::Result;
 use shared_crypto::intent::Intent;
 use sui_config::{sui_config_dir, SUI_KEYSTORE_FILENAME};
-use sui_json_rpc_types::{Coin, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions};
+use sui_json_rpc_types::{Coin, SuiTransactionBlockResponse, SuiTransactionBlockResponseOptions, SuiObjectData};
+// use sui_json_rpc_types::{
+//     SuiObjectData, SuiObjectDataFilter, SuiObjectDataOptions, SuiObjectResponseQuery,
+// };
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore};
 use sui_types::{
     base_types::{ObjectID, SuiAddress},
@@ -15,6 +18,7 @@ use sui_types::{
     transaction::{
         Argument, Command, ProgrammableMoveCall, ProgrammableTransaction, Transaction,
         TransactionData,
+        ObjectArg,
     },
     Identifier, TypeTag,
 };
@@ -124,6 +128,55 @@ pub extern "C" fn make_pure(
     let arguments = unsafe { &mut *arguments };
     let value = unsafe { &*value };
     let argument = builder.builder.pure_bytes(value.data.clone(), false);
+    arguments.arguments.push(argument);
+}
+
+pub async fn _get_owned_nft_object(
+    sender: &str,
+    nft_id: &str,
+) -> Result<Option<SuiObjectData>> {
+    let sui_client = SuiClientSingleton::instance().get_or_init().await?;
+    let sender_address = SuiAddress::from_str(sender)?;
+    let owned_objects = sui_client
+        .read_api()
+        .get_owned_objects(sender_address, None, None, None)
+        .await?;
+
+    let nft_object_data = owned_objects
+        .data
+        .into_iter()
+        .find(|obj| obj.object_id().unwrap() == ObjectID::from_str(nft_id).unwrap());
+    
+    Ok(nft_object_data.unwrap().data)
+}
+
+#[no_mangle]
+pub extern "C" fn make_object_imm_or_owned(
+    builder: *mut CProgrammableTransactionBuilder,
+    arguments: *mut CArguments,
+    nft_id: *const c_char,
+    sender: *const c_char,
+) {
+    let builder = unsafe { &mut *builder };
+    let arguments = unsafe { &mut *arguments };
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let c_str = unsafe {
+        assert!(!sender.is_null());
+        CStr::from_ptr(sender)
+    };
+    let sender_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let c_str = unsafe {
+        assert!(!nft_id.is_null());
+        CStr::from_ptr(nft_id)
+    };
+    let nft_str = c_str.to_str().unwrap_or("Invalid UTF-8");
+    let nft_object_info = runtime
+        .block_on(_get_owned_nft_object(
+            sender_str,
+            nft_str
+            ));
+    let object_ref = nft_object_info.unwrap().as_ref().unwrap().object_ref();
+    let argument = builder.builder.obj(ObjectArg::ImmOrOwnedObject(object_ref)).expect("Failed to build argument");
     arguments.arguments.push(argument);
 }
 
